@@ -183,6 +183,46 @@ def normalize_word(text):
     return text.lower()
 
 
+CONTEXT_EMOJI_RULES = [
+    ("\U0001f4bb", ("code", "coding", "program", "computer", "software", "app", "debug", "data", "algorithm")),
+    ("\U0001f4bc", ("work", "job", "career", "office", "business", "meeting", "deadline", "project", "client")),
+    ("\U0001f4b0", ("money", "cash", "price", "cost", "pay", "salary", "bank", "budget", "profit", "finance")),
+    ("\U0001f3e0", ("home", "house", "room", "kitchen", "family", "parent", "mother", "father")),
+    ("\U0001f697", ("car", "drive", "road", "traffic", "train", "bus", "flight", "airport", "travel", "trip")),
+    ("\U0001f37d\ufe0f", ("food", "eat", "drink", "coffee", "tea", "breakfast", "lunch", "dinner", "restaurant")),
+    ("\U0001f3c3", ("run", "sport", "gym", "fitness", "health", "exercise", "game", "football", "swim")),
+    ("\U0001f3a8", ("art", "music", "movie", "book", "story", "paint", "design", "photo", "creative")),
+    ("\U0001f48c", ("love", "friend", "date", "relationship", "feel", "emotion", "happy", "sad", "angry")),
+    ("\U0001f4da", ("learn", "study", "school", "university", "lesson", "exam", "knowledge", "grammar")),
+    ("\U0001f30d", ("world", "country", "city", "nature", "weather", "sea", "mountain", "forest", "river")),
+    ("\U0001f527", ("make", "build", "fix", "repair", "tool", "create", "change", "improve")),
+]
+
+
+def sanitize_emoji(value):
+    emoji = str(value or "").strip().split(maxsplit=1)[0] if value else ""
+    if not emoji or len(emoji) > 8:
+        return ""
+    if re.search(r"[A-Za-z0-9<>&]", emoji):
+        return ""
+    return emoji
+
+
+def choose_context_emoji(card):
+    explicit = sanitize_emoji(card.get("emoji") or card.get("emoji_context"))
+    if explicit:
+        return explicit
+
+    context = " ".join(
+        str(card.get(key) or "").lower()
+        for key in ("word", "translation", "translation_ru", "phrase_en", "phrase_ru")
+    )
+    for emoji, keywords in CONTEXT_EMOJI_RULES:
+        if any(re.search(rf"\b{re.escape(keyword)}\b", context) for keyword in keywords):
+            return emoji
+    return "\U0001f9e0"
+
+
 def telegram_request(method, payload=None):
     if not TELEGRAM_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is not set")
@@ -228,9 +268,10 @@ def main_keyboard():
 def word_card_prompt(word):
     return (
         "You help Russian speakers learn English. Return only valid JSON with keys: "
-        "word, translation_ru, phrase_en, phrase_ru. "
+        "word, translation_ru, phrase_en, phrase_ru, emoji. "
         "For the English word or phrase below, give a concise Russian translation and "
-        "one natural English example sentence using it. Keep the example practical.\n\n"
+        "one natural English example sentence using it. Keep the example practical. "
+        "Choose one emoji that matches the word's context or meaning.\n\n"
         f"Input: {word}"
     )
 
@@ -255,18 +296,25 @@ def word_card_schema():
                 "type": "string",
                 "description": "Russian translation of phrase_en.",
             },
+            "emoji": {
+                "type": "string",
+                "description": "One emoji matching the word's context or meaning.",
+            },
         },
-        "required": ["word", "translation_ru", "phrase_en", "phrase_ru"],
+        "required": ["word", "translation_ru", "phrase_en", "phrase_ru", "emoji"],
     }
 
 
 def normalize_card(card, word):
-    return {
+    normalized = {
         "word": str(card.get("word") or word).strip(),
         "translation": str(card.get("translation_ru") or card.get("translation") or "").strip(),
         "phrase_en": str(card.get("phrase_en") or "").strip(),
         "phrase_ru": str(card.get("phrase_ru") or "").strip(),
+        "emoji": sanitize_emoji(card.get("emoji") or card.get("emoji_context")),
     }
+    normalized["emoji"] = normalized["emoji"] or choose_context_emoji(normalized)
+    return normalized
 
 
 def safe_error_body(error):
@@ -369,12 +417,14 @@ def openrouter_word_card(word):
 
 def fallback_word_card(word):
     clean_word = word.strip()
-    return {
+    card = {
         "word": clean_word,
         "translation": "add OPENROUTER_API_KEY for automatic translation",
         "phrase_en": f"I noticed the word '{clean_word}' in a useful sentence today.",
         "phrase_ru": f"\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u044f \u0437\u0430\u043c\u0435\u0442\u0438\u043b \u0441\u043b\u043e\u0432\u043e '{clean_word}' \u0432 \u043f\u043e\u043b\u0435\u0437\u043d\u043e\u043c \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0438.",
     }
+    card["emoji"] = choose_context_emoji(card)
+    return card
 
 
 def build_word_card(word):
@@ -459,8 +509,9 @@ def format_card(card, label=None):
     title = escape(card["word"]).capitalize()
     if label:
         title = f"{escape(label)} · {title}"
+    emoji = escape(choose_context_emoji(card))
     return (
-        f"\U0001f9e0 <b>{title}</b>\n\n"
+        f"{emoji} <b>{title}</b>\n\n"
         f"{escape(card['translation'])}\n\n"
         f"\U0001f4ac \"{escape(card['phrase_en'])}\"\n\n"
         f"- {escape(card['phrase_ru'])}"
