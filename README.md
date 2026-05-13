@@ -28,7 +28,7 @@ python bot.py
 - `WORD_OF_DAY_TIME` — время рассылки слова дня, например `12:00`
 - `WORD_OF_DAY_PATH` — файл со словом дня
 - `OPENROUTER_API_KEY` — ключ OpenRouter
-- `OPENROUTER_MODEL` — модель, по умолчанию `openrouter/auto`
+- `OPENROUTER_MODEL` — модель, по умолчанию `z-ai/glm-4.5-air:free`
 - `OPENROUTER_API_URL` — endpoint OpenRouter chat completions
 - `OPENROUTER_TIMEOUT` — timeout запроса к OpenRouter в секундах
 - `DEFAULT_TIMEZONE` — часовой пояс для новых пользователей, например `Europe/Moscow`
