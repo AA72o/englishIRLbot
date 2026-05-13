@@ -60,6 +60,12 @@ REMINDER_TIMES = [
 ]
 WORD_OF_DAY_TIME = os.getenv("WORD_OF_DAY_TIME", "12:00")
 WORD_OF_DAY_PATH = app_path(os.getenv("WORD_OF_DAY_PATH", "word_of_day.txt"))
+CYRILLIC_MEME_REACTIONS = [
+    {
+        "image_path": app_path(os.path.join("assets", "cyrillic-confused.webp")),
+        "caption": "\u0422\u044b \u043f\u043e-\u043c\u043e\u0435\u043c\u0443 \u043f\u0435\u0440\u0435\u043f\u0443\u0442\u0430\u043b",
+    }
+]
 TIMEZONE_ALIASES = {
     "Europe/Moscow": "+03:00",
     "Europe/London": "+00:00",
@@ -263,6 +269,10 @@ def looks_like_valid_english(text):
     return is_valid_english_input(text)
 
 
+def contains_cyrillic(text):
+    return bool(re.search(r"[\u0400-\u04ff]", text or ""))
+
+
 CONTEXT_EMOJI_RULES = [
     ("\U0001f4bb", ("code", "coding", "program", "computer", "software", "app", "debug", "data", "algorithm")),
     ("\U0001f4bc", ("work", "job", "career", "office", "business", "meeting", "deadline", "project", "client")),
@@ -318,6 +328,46 @@ def telegram_request(method, payload=None):
     return result["result"]
 
 
+def telegram_multipart_request(method, fields, files):
+    if not TELEGRAM_TOKEN:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is not set")
+
+    boundary = f"----english-bot-{int(time.time() * 1000)}"
+    body = bytearray()
+
+    for key, value in fields.items():
+        body.extend(f"--{boundary}\r\n".encode("utf-8"))
+        body.extend(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode("utf-8"))
+        body.extend(str(value).encode("utf-8"))
+        body.extend(b"\r\n")
+
+    for key, file_path in files.items():
+        filename = os.path.basename(file_path)
+        body.extend(f"--{boundary}\r\n".encode("utf-8"))
+        body.extend(
+            f'Content-Disposition: form-data; name="{key}"; filename="{filename}"\r\n'.encode("utf-8")
+        )
+        body.extend(b"Content-Type: image/webp\r\n\r\n")
+        with open(file_path, "rb") as file_obj:
+            body.extend(file_obj.read())
+        body.extend(b"\r\n")
+
+    body.extend(f"--{boundary}--\r\n".encode("utf-8"))
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/{method}"
+    req = urllib.request.Request(
+        url,
+        data=bytes(body),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=60) as response:
+        raw_body = response.read().decode("utf-8")
+    result = json.loads(raw_body)
+    if not result.get("ok"):
+        raise RuntimeError(f"Telegram API error: {result}")
+    return result["result"]
+
+
 def send_message(chat_id, text):
     if os.getenv("LOCAL_TEST") == "1":
         safe_text = f"\nBOT -> {chat_id}\n{text}\n"
@@ -335,6 +385,29 @@ def send_message(chat_id, text):
             "reply_markup": json.dumps(main_keyboard(), ensure_ascii=False),
         },
     )
+
+
+def send_photo(chat_id, image_path):
+    if os.getenv("LOCAL_TEST") == "1":
+        safe_text = f"\nBOT PHOTO -> {chat_id}\n{image_path}\n"
+        encoding = sys.stdout.encoding or "utf-8"
+        print(safe_text.encode(encoding, errors="replace").decode(encoding))
+        return {"message_id": 0}
+
+    return telegram_multipart_request(
+        "sendPhoto",
+        {
+            "chat_id": chat_id,
+            "reply_markup": json.dumps(main_keyboard(), ensure_ascii=False),
+        },
+        {"photo": image_path},
+    )
+
+
+def send_cyrillic_meme_reaction(chat_id):
+    reaction = CYRILLIC_MEME_REACTIONS[0]
+    send_photo(chat_id, reaction["image_path"])
+    send_message(chat_id, reaction["caption"])
 
 
 def main_keyboard():
@@ -826,6 +899,10 @@ def handle_message(message):
         set_user_timezone(user_id, timezone)
         local_time = user_local_now(timezone).strftime("%H:%M")
         send_message(chat_id, f"\u0413\u043e\u0442\u043e\u0432\u043e. \u0422\u0432\u043e\u0439 \u0447\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: {escape(timezone)}. \u0421\u0435\u0439\u0447\u0430\u0441 \u0443 \u0442\u0435\u0431\u044f {local_time}.")
+        return
+
+    if contains_cyrillic(text):
+        send_cyrillic_meme_reaction(chat_id)
         return
 
     if not is_valid_english_input(text):
