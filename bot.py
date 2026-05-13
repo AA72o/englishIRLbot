@@ -12,6 +12,8 @@ from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
+print("BOOT: script started", flush=True)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -303,6 +305,7 @@ def gemini_word_card(word):
         print("Gemini skipped: GEMINI_API_KEY is empty")
         return None
 
+    print("BOOT: requesting gemini", flush=True)
     model = urllib.parse.quote(GEMINI_MODEL, safe="")
     url = f"{GEMINI_API_BASE.rstrip('/')}/v1beta/models/{model}:generateContent"
     payload = {
@@ -326,7 +329,8 @@ def gemini_word_card(word):
     try:
         with urllib.request.urlopen(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, urllib.error.HTTPError) as exc:
+    except Exception as exc:
+        print("GEMINI ERROR:", exc, flush=True)
         log_provider_error("Gemini", exc)
         return None
 
@@ -654,6 +658,7 @@ def handle_message(message):
 
 def poll_updates():
     offset = 0
+    print("BOOT: polling loop started", flush=True)
     while True:
         send_due_reminders()
         send_due_word_of_day()
