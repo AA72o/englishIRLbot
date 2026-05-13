@@ -12,7 +12,17 @@ from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
-def load_dotenv(path=".env"):
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def app_path(path):
+    if os.path.isabs(path):
+        return path
+    return os.path.join(BASE_DIR, path)
+
+
+def load_dotenv(path=None):
+    path = path or app_path(".env")
     if not os.path.exists(path):
         return
 
@@ -27,18 +37,19 @@ def load_dotenv(path=".env"):
 
 load_dotenv()
 
-DB_PATH = os.getenv("BOT_DB_PATH", "english_bot.sqlite3")
+DB_PATH = app_path(os.getenv("BOT_DB_PATH", "english_bot.sqlite3"))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_API_BASE = os.getenv("GEMINI_API_BASE", "https://generativelanguage.googleapis.com")
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Moscow")
 REMINDER_TIMES = [
     item.strip() for item in os.getenv("REMINDER_TIMES", "09:00,15:00,21:00").split(",") if item.strip()
 ]
 WORD_OF_DAY_TIME = os.getenv("WORD_OF_DAY_TIME", "12:00")
-WORD_OF_DAY_PATH = os.getenv("WORD_OF_DAY_PATH", "word_of_day.txt")
+WORD_OF_DAY_PATH = app_path(os.getenv("WORD_OF_DAY_PATH", "word_of_day.txt"))
 TIMEZONE_ALIASES = {
     "Europe/Moscow": "+03:00",
     "Europe/London": "+00:00",
@@ -229,8 +240,24 @@ def normalize_card(card, word):
     }
 
 
+def safe_error_body(error):
+    try:
+        return error.read().decode("utf-8", errors="replace")[:1000]
+    except Exception:
+        return ""
+
+
+def log_provider_error(provider, exc):
+    if isinstance(exc, urllib.error.HTTPError):
+        body = safe_error_body(exc)
+        print(f"{provider} error: HTTP {exc.code} {exc.reason}. {body}")
+        return
+    print(f"{provider} error: {type(exc).__name__}: {exc}")
+
+
 def openai_word_card(word):
     if not OPENAI_API_KEY:
+        print("OpenAI skipped: OPENAI_API_KEY is empty")
         return None
 
     payload = {
@@ -250,7 +277,8 @@ def openai_word_card(word):
     try:
         with urllib.request.urlopen(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, urllib.error.HTTPError) as exc:
+        log_provider_error("OpenAI", exc)
         return None
 
     text = data.get("output_text", "")
@@ -272,10 +300,11 @@ def openai_word_card(word):
 
 def gemini_word_card(word):
     if not GEMINI_API_KEY:
+        print("Gemini skipped: GEMINI_API_KEY is empty")
         return None
 
     model = urllib.parse.quote(GEMINI_MODEL, safe="")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    url = f"{GEMINI_API_BASE.rstrip('/')}/v1beta/models/{model}:generateContent"
     payload = {
         "contents": [
             {
@@ -297,7 +326,8 @@ def gemini_word_card(word):
     try:
         with urllib.request.urlopen(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, urllib.error.HTTPError) as exc:
+        log_provider_error("Gemini", exc)
         return None
 
     chunks = []
@@ -640,8 +670,19 @@ def poll_updates():
             time.sleep(5)
 
 
+def print_runtime_status():
+    print(f"Loaded .env from: {app_path('.env')}")
+    print(f"Telegram token: {'ok' if TELEGRAM_TOKEN else 'missing'}")
+    print(f"OpenAI key: {'ok' if OPENAI_API_KEY else 'missing'}")
+    print(f"Gemini key: {'ok' if GEMINI_API_KEY else 'missing'}")
+    print(f"Gemini model: {GEMINI_MODEL}")
+    print(f"Gemini API base: {GEMINI_API_BASE}")
+    print(f"Database: {DB_PATH}")
+
+
 def run_local_test():
     init_db()
+    print_runtime_status()
     chat_id = int(os.getenv("LOCAL_TEST_CHAT_ID", "1"))
     user_id = int(os.getenv("LOCAL_TEST_USER_ID", "1"))
     samples = ["/start", "overthinking", "overthinking", "\u0428\u0430\u0440\u044e", "/tz +03:00"]
@@ -664,4 +705,5 @@ if __name__ == "__main__":
 
     init_db()
     print("English Telegram bot is running...")
+    print_runtime_status()
     poll_updates()
