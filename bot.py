@@ -233,6 +233,31 @@ def word_card_prompt(word):
     )
 
 
+def word_card_schema():
+    return {
+        "type": "object",
+        "properties": {
+            "word": {
+                "type": "string",
+                "description": "The English word or phrase.",
+            },
+            "translation_ru": {
+                "type": "string",
+                "description": "A concise Russian translation.",
+            },
+            "phrase_en": {
+                "type": "string",
+                "description": "A natural English example sentence using the word.",
+            },
+            "phrase_ru": {
+                "type": "string",
+                "description": "Russian translation of phrase_en.",
+            },
+        },
+        "required": ["word", "translation_ru", "phrase_en", "phrase_ru"],
+    }
+
+
 def normalize_card(card, word):
     return {
         "word": str(card.get("word") or word).strip(),
@@ -252,7 +277,8 @@ def safe_error_body(error):
 def log_provider_error(provider, exc):
     if isinstance(exc, urllib.error.HTTPError):
         body = safe_error_body(exc)
-        print(f"{provider} error: HTTP {exc.code} {exc.reason}. {body}")
+        print(f"{provider} error: HTTP {exc.code} {exc.reason}", flush=True)
+        print(f"{provider} response body: {body}", flush=True)
         return
     print(f"{provider} error: {type(exc).__name__}: {exc}")
 
@@ -311,11 +337,13 @@ def gemini_word_card(word):
     payload = {
         "contents": [
             {
-                "role": "user",
                 "parts": [{"text": word_card_prompt(word)}],
             }
         ],
-        "generationConfig": {"responseMimeType": "application/json"},
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": word_card_schema(),
+        },
     }
     req = urllib.request.Request(
         url,
