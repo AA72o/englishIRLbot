@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 import sqlite3
 import sys
 import time
@@ -39,7 +40,9 @@ def load_dotenv(path=None):
 
 load_dotenv()
 
-DB_PATH = app_path(os.getenv("BOT_DB_PATH", "english_bot.sqlite3"))
+DEFAULT_DB_PATH = app_path(os.path.join("data", "english_bot.sqlite3"))
+LEGACY_DB_PATH = app_path("english_bot.sqlite3")
+DB_PATH = app_path(os.getenv("BOT_DB_PATH", DEFAULT_DB_PATH))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "z-ai/glm-4.5-air:free")
@@ -71,6 +74,21 @@ TIMEZONE_ALIASES = {
     "America/Denver": "-07:00",
     "America/Los_Angeles": "-08:00",
 }
+
+
+def prepare_db_file():
+    if DB_PATH == ":memory:":
+        return
+
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
+    if DB_PATH != LEGACY_DB_PATH and not os.path.exists(DB_PATH) and os.path.exists(LEGACY_DB_PATH):
+        shutil.copy2(LEGACY_DB_PATH, DB_PATH)
+
+
+prepare_db_file()
 
 
 def db_connect():
