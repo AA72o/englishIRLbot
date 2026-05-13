@@ -35,7 +35,10 @@ def load_dotenv(path=None):
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, value = line.split("=", 1)
-            os.environ[key.strip()] = value.strip().strip('"').strip("'")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if value or not os.environ.get(key):
+                os.environ[key] = value
 
 
 load_dotenv()
@@ -201,6 +204,65 @@ def normalize_word(text):
     return text.lower()
 
 
+INVALID_ENGLISH_MESSAGE = (
+    "\u041f\u043e\u0445\u043e\u0436\u0435, \u044d\u0442\u043e \u043d\u0435 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e. "
+    "\u041e\u0442\u043f\u0440\u0430\u0432\u044c \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0444\u0440\u0430\u0437\u0443 \u043d\u0430 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u043c - "
+    "\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: awkward, deadline, overthinking."
+)
+TRANSLITERATED_RUSSIAN_WORDS = {
+    "privet",
+    "spasibo",
+    "pozhaluysta",
+    "poka",
+    "dver",
+    "okno",
+    "stol",
+    "stul",
+    "dom",
+    "kot",
+    "sobaka",
+    "chelovek",
+    "rabota",
+    "den",
+    "noch",
+    "utro",
+    "vecher",
+    "horosho",
+    "ploho",
+}
+
+
+def is_valid_english_input(text):
+    value = normalize_word(text)
+    if not value or re.search(r"[\u0400-\u04ff]", value):
+        return False
+    if not value or re.search(r"[А-Яа-яЁё]", value):
+        return False
+    if not re.search(r"[a-z]", value):
+        return False
+    if re.search(r"[^a-z\s'\-]", value):
+        return False
+
+    words = re.findall(r"[a-z]+(?:['-][a-z]+)?", value)
+    if not words:
+        return False
+    if any(word in TRANSLITERATED_RUSSIAN_WORDS for word in words):
+        return False
+    if len(words) == 1 and re.search(r"(asdf|sdfg|dfgh|qwer|wert|zxcv|hjkl)", words[0]):
+        return False
+    if len(words) == 1 and len(words[0]) > 3 and not re.search(r"[aeiouy]", words[0]):
+        return False
+    if len(words) == 1 and re.search(r"(.)\1\1", words[0]):
+        return False
+    if len(words) == 1 and re.search(r"[bcdfghjklmnpqrstvwxz]{4,}", words[0]):
+        return False
+    return True
+
+
+def looks_like_valid_english(text):
+    return is_valid_english_input(text)
+
+
 CONTEXT_EMOJI_RULES = [
     ("\U0001f4bb", ("code", "coding", "program", "computer", "software", "app", "debug", "data", "algorithm")),
     ("\U0001f4bc", ("work", "job", "career", "office", "business", "meeting", "deadline", "project", "client")),
@@ -285,11 +347,19 @@ def main_keyboard():
 
 def word_card_prompt(word):
     return (
-        "You help Russian speakers learn English. Return only valid JSON with keys: "
-        "word, translation_ru, phrase_en, phrase_ru, emoji. "
-        "For the English word or phrase below, give a concise Russian translation and "
-        "one natural English example sentence using it. Keep the example practical. "
-        "Choose one emoji that matches the word's context or meaning.\n\n"
+        "You are a warm, modern English companion for adult Russian speakers. "
+        "Return only valid JSON with keys: is_valid_english, word, translation_ru, "
+        "phrase_en, phrase_ru, usage_note_ru, emoji. "
+        "First decide if the input is a real English word or phrase. Reject Russian "
+        "written in Latin letters, typos, gibberish, and non-English input. "
+        "Examples to reject: Dver, privet, spasibo. Do not translate them into English. "
+        "If invalid, set is_valid_english to false and leave all text fields empty. "
+        "If valid, write like a warm, modern English companion, not a dictionary: "
+        "natural Russian meaning, one lively real-life English example, natural Russian "
+        "translation, and a short Russian note about when people actually use it. "
+        "Tone: modern, witty, adult casual; not textbook, not childish slang, not TikTok brainrot. "
+        "Avoid boring examples like beach-day textbook sentences. Use work, relationships, "
+        "awkward moments, daily life, real conversations. Choose one relevant emoji.\n\n"
         f"Input: {word}"
     )
 
@@ -297,7 +367,12 @@ def word_card_prompt(word):
 def word_card_schema():
     return {
         "type": "object",
+        "additionalProperties": False,
         "properties": {
+            "is_valid_english": {
+                "type": "boolean",
+                "description": "True only for a real English word or phrase.",
+            },
             "word": {
                 "type": "string",
                 "description": "The English word or phrase.",
@@ -314,21 +389,36 @@ def word_card_schema():
                 "type": "string",
                 "description": "Russian translation of phrase_en.",
             },
+            "usage_note_ru": {
+                "type": "string",
+                "description": "Short Russian note: when people actually use this word or phrase.",
+            },
             "emoji": {
                 "type": "string",
                 "description": "One emoji matching the word's context or meaning.",
             },
         },
-        "required": ["word", "translation_ru", "phrase_en", "phrase_ru", "emoji"],
+        "required": [
+            "is_valid_english",
+            "word",
+            "translation_ru",
+            "phrase_en",
+            "phrase_ru",
+            "usage_note_ru",
+            "emoji",
+        ],
     }
 
 
 def normalize_card(card, word):
+    is_valid = bool(card.get("is_valid_english", True))
     normalized = {
+        "is_valid_english": is_valid,
         "word": str(card.get("word") or word).strip(),
         "translation": str(card.get("translation_ru") or card.get("translation") or "").strip(),
         "phrase_en": str(card.get("phrase_en") or "").strip(),
         "phrase_ru": str(card.get("phrase_ru") or "").strip(),
+        "usage_note": str(card.get("usage_note_ru") or card.get("usage_note") or "").strip(),
         "emoji": sanitize_emoji(card.get("emoji") or card.get("emoji_context")),
     }
     normalized["emoji"] = normalized["emoji"] or choose_context_emoji(normalized)
@@ -436,17 +526,24 @@ def openrouter_word_card(word):
 def fallback_word_card(word):
     clean_word = word.strip()
     card = {
+        "is_valid_english": is_valid_english_input(clean_word),
         "word": clean_word,
         "translation": "add OPENROUTER_API_KEY for automatic translation",
-        "phrase_en": f"I noticed the word '{clean_word}' in a useful sentence today.",
-        "phrase_ru": f"\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u044f \u0437\u0430\u043c\u0435\u0442\u0438\u043b \u0441\u043b\u043e\u0432\u043e '{clean_word}' \u0432 \u043f\u043e\u043b\u0435\u0437\u043d\u043e\u043c \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0438.",
+        "phrase_en": f"I almost used '{clean_word}' in a meeting, then decided to sound like a person instead.",
+        "phrase_ru": f"\u042f \u0447\u0443\u0442\u044c \u043d\u0435 \u0432\u0441\u0442\u0430\u0432\u0438\u043b '{clean_word}' \u043d\u0430 \u0441\u043e\u0432\u0435\u0449\u0430\u043d\u0438\u0438, \u043d\u043e \u0440\u0435\u0448\u0438\u043b \u0432\u0441\u0435-\u0442\u0430\u043a\u0438 \u0437\u0432\u0443\u0447\u0430\u0442\u044c \u043a\u0430\u043a \u0447\u0435\u043b\u043e\u0432\u0435\u043a.",
+        "usage_note": "\u041a\u043e\u0433\u0434\u0430 \u043d\u0443\u0436\u043d\u043e \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e \u0432 \u0436\u0438\u0432\u043e\u043c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0435, \u0430 \u043d\u0435 \u0432 \u0441\u0443\u0445\u043e\u043c \u0441\u043b\u043e\u0432\u0430\u0440\u0435.",
     }
     card["emoji"] = choose_context_emoji(card)
     return card
 
 
 def build_word_card(word):
+    if not is_valid_english_input(word):
+        return {"is_valid_english": False}
+
     card = openrouter_word_card(word) or fallback_word_card(word)
+    if not card.get("is_valid_english", True):
+        return card
     if not card["translation"] or not card["phrase_en"] or not card["phrase_ru"]:
         return fallback_word_card(word)
     return card
@@ -528,11 +625,17 @@ def format_card(card, label=None):
     if label:
         title = f"{escape(label)} · {title}"
     emoji = escape(choose_context_emoji(card))
+    usage_note = escape(
+        card.get("usage_note")
+        or "\u0423\u043f\u043e\u0442\u0440\u0435\u0431\u043b\u044f\u044e\u0442 \u0432 \u0436\u0438\u0432\u043e\u0439 \u0440\u0435\u0447\u0438, \u043a\u043e\u0433\u0434\u0430 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442 \u0432\u0430\u0436\u043d\u0435\u0435 \u0441\u0443\u0445\u043e\u0433\u043e \u043f\u0435\u0440\u0435\u0432\u043e\u0434\u0430."
+    )
     return (
         f"{emoji} <b>{title}</b>\n\n"
         f"{escape(card['translation'])}\n\n"
         f"\U0001f4ac \"{escape(card['phrase_en'])}\"\n\n"
-        f"- {escape(card['phrase_ru'])}"
+        f"- {escape(card['phrase_ru'])}\n\n"
+        f"<b>\u0413\u0434\u0435 \u0432\u0441\u0442\u0440\u0435\u0447\u0430\u0435\u0442\u0441\u044f:</b>\n"
+        f"{usage_note}"
     )
 
 
@@ -725,9 +828,16 @@ def handle_message(message):
         send_message(chat_id, f"\u0413\u043e\u0442\u043e\u0432\u043e. \u0422\u0432\u043e\u0439 \u0447\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: {escape(timezone)}. \u0421\u0435\u0439\u0447\u0430\u0441 \u0443 \u0442\u0435\u0431\u044f {local_time}.")
         return
 
+    if not is_valid_english_input(text):
+        send_message(chat_id, INVALID_ENGLISH_MESSAGE)
+        return
+
     saved_word = find_saved_word(user_id, text)
     if saved_word:
         card = build_word_card(saved_word["word"])
+        if not card.get("is_valid_english", True):
+            send_message(chat_id, INVALID_ENGLISH_MESSAGE)
+            return
         card["translation"] = card["translation"] or saved_word["translation"]
         send_message(
             chat_id,
@@ -736,6 +846,9 @@ def handle_message(message):
         return
 
     card = build_word_card(text)
+    if not card.get("is_valid_english", True):
+        send_message(chat_id, INVALID_ENGLISH_MESSAGE)
+        return
     save_word(user_id, card)
     send_message(chat_id, format_card(card))
 
