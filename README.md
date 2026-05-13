@@ -10,12 +10,11 @@
 
 ```powershell
 $env:TELEGRAM_BOT_TOKEN="ваш-токен"
-$env:OPENAI_API_KEY="ваш-openai-ключ"
+$env:OPENROUTER_API_KEY="ваш-openrouter-ключ"
 python bot.py
 ```
 
-Без `OPENAI_API_KEY` бот запустится, но будет показывать заглушку вместо настоящего перевода.
-Можно использовать и Gemini: заполните `GEMINI_API_KEY`, тогда бот будет брать карточки из Gemini, если `OPENAI_API_KEY` пустой.
+Без `OPENROUTER_API_KEY` бот запустится, но будет показывать заглушку вместо настоящего перевода.
 
 ## Команды
 
@@ -28,7 +27,9 @@ python bot.py
 - `REMINDER_TIMES` — время повторений по локальному времени пользователя, например `09:00,15:00,21:00`
 - `WORD_OF_DAY_TIME` — время рассылки слова дня, например `12:00`
 - `WORD_OF_DAY_PATH` — файл со словом дня
-- `GEMINI_API_BASE` — базовый адрес Gemini API, можно менять для прокси/шлюза
+- `OPENROUTER_API_KEY` — ключ OpenRouter
+- `OPENROUTER_MODEL` — модель, по умолчанию `openai/gpt-oss-120b:free`
+- `OPENROUTER_API_URL` — endpoint OpenRouter chat completions
 - `DEFAULT_TIMEZONE` — часовой пояс для новых пользователей, например `Europe/Moscow`
 - `BOT_DB_PATH` — путь к SQLite-базе
 

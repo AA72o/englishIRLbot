@@ -41,11 +41,12 @@ load_dotenv()
 
 DB_PATH = app_path(os.getenv("BOT_DB_PATH", "english_bot.sqlite3"))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_API_BASE = os.getenv("GEMINI_API_BASE", "https://generativelanguage.googleapis.com")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+OPENROUTER_API_URL = os.getenv(
+    "OPENROUTER_API_URL",
+    "https://openrouter.ai/api/v1/chat/completions",
+)
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Moscow")
 REMINDER_TIMES = [
     item.strip() for item in os.getenv("REMINDER_TIMES", "09:00,15:00,21:00").split(",") if item.strip()
@@ -283,74 +284,37 @@ def log_provider_error(provider, exc):
     print(f"{provider} error: {type(exc).__name__}: {exc}")
 
 
-def openai_word_card(word):
-    if not OPENAI_API_KEY:
-        print("OpenAI skipped: OPENAI_API_KEY is empty")
+def openrouter_word_card(word):
+    if not OPENROUTER_API_KEY:
+        print("OpenRouter skipped: OPENROUTER_API_KEY is empty", flush=True)
         return None
 
+    print("BOOT: requesting openrouter", flush=True)
     payload = {
-        "model": OPENAI_MODEL,
-        "input": word_card_prompt(word),
-        "text": {"format": {"type": "json_object"}},
-    }
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=45) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, urllib.error.HTTPError) as exc:
-        log_provider_error("OpenAI", exc)
-        return None
-
-    text = data.get("output_text", "")
-    if not text:
-        chunks = []
-        for item in data.get("output", []):
-            for content in item.get("content", []):
-                if content.get("type") == "output_text":
-                    chunks.append(content.get("text", ""))
-        text = "".join(chunks)
-
-    try:
-        card = json.loads(text)
-    except json.JSONDecodeError:
-        return None
-
-    return normalize_card(card, word)
-
-
-def gemini_word_card(word):
-    if not GEMINI_API_KEY:
-        print("Gemini skipped: GEMINI_API_KEY is empty")
-        return None
-
-    print("BOOT: requesting gemini", flush=True)
-    model = urllib.parse.quote(GEMINI_MODEL, safe="")
-    url = f"{GEMINI_API_BASE.rstrip('/')}/v1beta/models/{model}:generateContent"
-    payload = {
-        "contents": [
+        "model": OPENROUTER_MODEL,
+        "messages": [
             {
-                "parts": [{"text": word_card_prompt(word)}],
+                "role": "user",
+                "content": word_card_prompt(word),
             }
         ],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseJsonSchema": word_card_schema(),
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "word_card",
+                "strict": True,
+                "schema": word_card_schema(),
+            },
         },
     }
     req = urllib.request.Request(
-        url,
+        OPENROUTER_API_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "x-goog-api-key": GEMINI_API_KEY,
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
+            "HTTP-Referer": "https://english-telegram-bot.local",
+            "X-Title": "English Telegram Bot",
         },
         method="POST",
     )
@@ -358,17 +322,20 @@ def gemini_word_card(word):
         with urllib.request.urlopen(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
-        print("GEMINI ERROR:", exc, flush=True)
-        log_provider_error("Gemini", exc)
+        print("OPENROUTER ERROR:", exc, flush=True)
+        log_provider_error("OpenRouter", exc)
         return None
 
-    chunks = []
-    for candidate in data.get("candidates", []):
-        content = candidate.get("content", {})
-        for part in content.get("parts", []):
-            if "text" in part:
-                chunks.append(part["text"])
-    text = "".join(chunks).strip()
+    choices = data.get("choices", [])
+    if not choices:
+        print(f"OpenRouter error: no choices in response: {data}", flush=True)
+        return None
+
+    message = choices[0].get("message", {})
+    text = message.get("content", "")
+    if isinstance(text, list):
+        text = "".join(item.get("text", "") for item in text if isinstance(item, dict))
+    text = str(text).strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
 
@@ -384,14 +351,14 @@ def fallback_word_card(word):
     clean_word = word.strip()
     return {
         "word": clean_word,
-        "translation": "add OPENAI_API_KEY or GEMINI_API_KEY for automatic translation",
+        "translation": "add OPENROUTER_API_KEY for automatic translation",
         "phrase_en": f"I noticed the word '{clean_word}' in a useful sentence today.",
         "phrase_ru": f"\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u044f \u0437\u0430\u043c\u0435\u0442\u0438\u043b \u0441\u043b\u043e\u0432\u043e '{clean_word}' \u0432 \u043f\u043e\u043b\u0435\u0437\u043d\u043e\u043c \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0438.",
     }
 
 
 def build_word_card(word):
-    card = openai_word_card(word) or gemini_word_card(word) or fallback_word_card(word)
+    card = openrouter_word_card(word) or fallback_word_card(word)
     if not card["translation"] or not card["phrase_en"] or not card["phrase_ru"]:
         return fallback_word_card(word)
     return card
@@ -706,10 +673,9 @@ def poll_updates():
 def print_runtime_status():
     print(f"Loaded .env from: {app_path('.env')}")
     print(f"Telegram token: {'ok' if TELEGRAM_TOKEN else 'missing'}")
-    print(f"OpenAI key: {'ok' if OPENAI_API_KEY else 'missing'}")
-    print(f"Gemini key: {'ok' if GEMINI_API_KEY else 'missing'}")
-    print(f"Gemini model: {GEMINI_MODEL}")
-    print(f"Gemini API base: {GEMINI_API_BASE}")
+    print(f"OpenRouter key: {'ok' if OPENROUTER_API_KEY else 'missing'}")
+    print(f"OpenRouter model: {OPENROUTER_MODEL}")
+    print(f"OpenRouter API URL: {OPENROUTER_API_URL}")
     print(f"Database: {DB_PATH}")
 
 
