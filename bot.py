@@ -42,11 +42,12 @@ load_dotenv()
 DB_PATH = app_path(os.getenv("BOT_DB_PATH", "english_bot.sqlite3"))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
 OPENROUTER_API_URL = os.getenv(
     "OPENROUTER_API_URL",
     "https://openrouter.ai/api/v1/chat/completions",
 )
+OPENROUTER_TIMEOUT = int(os.getenv("OPENROUTER_TIMEOUT", "30"))
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Moscow")
 REMINDER_TIMES = [
     item.strip() for item in os.getenv("REMINDER_TIMES", "09:00,15:00,21:00").split(",") if item.strip()
@@ -275,13 +276,18 @@ def safe_error_body(error):
         return ""
 
 
+def preview_body(text, limit=1000):
+    text = str(text)
+    return text if len(text) <= limit else text[:limit] + "...[truncated]"
+
+
 def log_provider_error(provider, exc):
     if isinstance(exc, urllib.error.HTTPError):
         body = safe_error_body(exc)
         print(f"{provider} error: HTTP {exc.code} {exc.reason}", flush=True)
         print(f"{provider} response body: {body}", flush=True)
         return
-    print(f"{provider} error: {type(exc).__name__}: {exc}")
+    print(f"{provider} error: {type(exc).__name__}: {exc}", flush=True)
 
 
 def openrouter_word_card(word):
@@ -289,7 +295,10 @@ def openrouter_word_card(word):
         print("OpenRouter skipped: OPENROUTER_API_KEY is empty", flush=True)
         return None
 
-    print("BOOT: requesting openrouter", flush=True)
+    print(
+        f"BOOT: requesting openrouter model={OPENROUTER_MODEL} timeout={OPENROUTER_TIMEOUT}",
+        flush=True,
+    )
     payload = {
         "model": OPENROUTER_MODEL,
         "messages": [
@@ -319,8 +328,19 @@ def openrouter_word_card(word):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=45) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        with urllib.request.urlopen(req, timeout=OPENROUTER_TIMEOUT) as response:
+            raw_body = response.read().decode("utf-8", errors="replace")
+            print(f"BOOT: openrouter response status={response.status}", flush=True)
+            print(f"OpenRouter response body: {preview_body(raw_body)}", flush=True)
+            data = json.loads(raw_body)
+    except urllib.error.HTTPError as exc:
+        print("OPENROUTER HTTP ERROR:", exc, flush=True)
+        log_provider_error("OpenRouter", exc)
+        return None
+    except (urllib.error.URLError, TimeoutError) as exc:
+        print("OPENROUTER NETWORK/TIMEOUT ERROR:", exc, flush=True)
+        log_provider_error("OpenRouter", exc)
+        return None
     except Exception as exc:
         print("OPENROUTER ERROR:", exc, flush=True)
         log_provider_error("OpenRouter", exc)
@@ -676,6 +696,7 @@ def print_runtime_status():
     print(f"OpenRouter key: {'ok' if OPENROUTER_API_KEY else 'missing'}")
     print(f"OpenRouter model: {OPENROUTER_MODEL}")
     print(f"OpenRouter API URL: {OPENROUTER_API_URL}")
+    print(f"OpenRouter timeout: {OPENROUTER_TIMEOUT}")
     print(f"Database: {DB_PATH}")
 
 
