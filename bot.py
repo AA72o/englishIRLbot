@@ -9,7 +9,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from difflib import SequenceMatcher
 from datetime import datetime, timedelta, timezone as dt_timezone
 from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -56,6 +55,7 @@ OPENROUTER_API_URL = os.getenv(
     "https://openrouter.ai/api/v1/chat/completions",
 )
 OPENROUTER_TIMEOUT = int(os.getenv("OPENROUTER_TIMEOUT", "30"))
+OPENROUTER_JUDGE_TIMEOUT = int(os.getenv("OPENROUTER_JUDGE_TIMEOUT", "8"))
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Moscow")
 REMINDER_TIMES = [
     item.strip() for item in os.getenv("REMINDER_TIMES", "09:00,15:00,21:00").split(",") if item.strip()
@@ -460,6 +460,14 @@ def init_db():
             conn.execute(
                 "ALTER TABLE words ADD COLUMN learned_from_practice INTEGER NOT NULL DEFAULT 0"
             )
+        if "accepted_ru_variants" not in word_columns:
+            conn.execute(
+                "ALTER TABLE words ADD COLUMN accepted_ru_variants TEXT NOT NULL DEFAULT '[]'"
+            )
+        if "accepted_en_variants" not in word_columns:
+            conn.execute(
+                "ALTER TABLE words ADD COLUMN accepted_en_variants TEXT NOT NULL DEFAULT '[]'"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS user_words (
@@ -491,6 +499,15 @@ def init_db():
             )
             """
         )
+        suggested_columns = [row["name"] for row in conn.execute("PRAGMA table_info(suggested_words)").fetchall()]
+        if "accepted_ru_variants" not in suggested_columns:
+            conn.execute(
+                "ALTER TABLE suggested_words ADD COLUMN accepted_ru_variants TEXT NOT NULL DEFAULT '[]'"
+            )
+        if "accepted_en_variants" not in suggested_columns:
+            conn.execute(
+                "ALTER TABLE suggested_words ADD COLUMN accepted_en_variants TEXT NOT NULL DEFAULT '[]'"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS refresh_sessions (
@@ -518,12 +535,23 @@ def init_db():
                 correct_answer TEXT NOT NULL,
                 user_answer TEXT,
                 result TEXT,
+                accepted_ru_variants TEXT NOT NULL DEFAULT '[]',
+                accepted_en_variants TEXT NOT NULL DEFAULT '[]',
                 suggested_word_id INTEGER,
                 answered_at TEXT,
                 UNIQUE(session_id, position)
             )
             """
         )
+        refresh_item_columns = [row["name"] for row in conn.execute("PRAGMA table_info(refresh_session_items)").fetchall()]
+        if "accepted_ru_variants" not in refresh_item_columns:
+            conn.execute(
+                "ALTER TABLE refresh_session_items ADD COLUMN accepted_ru_variants TEXT NOT NULL DEFAULT '[]'"
+            )
+        if "accepted_en_variants" not in refresh_item_columns:
+            conn.execute(
+                "ALTER TABLE refresh_session_items ADD COLUMN accepted_en_variants TEXT NOT NULL DEFAULT '[]'"
+            )
         seed_suggested_words(conn)
         conn.execute(
             """
@@ -829,7 +857,7 @@ def word_card_prompt(word):
     return (
         "You are a warm, modern English companion for adult Russian speakers. "
         "Return only valid JSON with keys: is_valid_english, word, translation_ru, "
-        "phrase_en, phrase_ru, usage_note_ru, emoji. "
+        "phrase_en, phrase_ru, usage_note_ru, emoji, accepted_ru_variants, accepted_en_variants. "
         "First decide if the input is a real English word or phrase. Reject Russian "
         "written in Latin letters, typos, gibberish, and non-English input. "
         "Examples to reject: Dver, privet, spasibo. Do not translate them into English. "
@@ -837,6 +865,8 @@ def word_card_prompt(word):
         "If valid, write like a warm, modern English companion, not a dictionary: "
         "natural Russian meaning, one lively real-life English example, natural Russian "
         "translation, and a short Russian note about when people actually use it. "
+        "Also add accepted_ru_variants: 3-7 natural Russian meanings/synonyms, "
+        "and accepted_en_variants: 3-7 natural English equivalents or forms. "
         "Tone: modern, witty, adult casual; not textbook, not childish slang, not TikTok brainrot. "
         "Avoid boring examples like beach-day textbook sentences. Use work, relationships, "
         "awkward moments, daily life, real conversations. Choose one relevant emoji.\n\n"
@@ -877,6 +907,16 @@ def word_card_schema():
                 "type": "string",
                 "description": "One emoji matching the word's context or meaning.",
             },
+            "accepted_ru_variants": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "3-7 natural Russian meanings/synonyms accepted as answers.",
+            },
+            "accepted_en_variants": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "3-7 natural English equivalents or grammatical forms.",
+            },
         },
         "required": [
             "is_valid_english",
@@ -886,8 +926,22 @@ def word_card_schema():
             "phrase_ru",
             "usage_note_ru",
             "emoji",
+            "accepted_ru_variants",
+            "accepted_en_variants",
         ],
     }
+
+
+def clean_variant_list(values, fallback=None, limit=7):
+    fallback = fallback or []
+    if not isinstance(values, list):
+        values = []
+    cleaned = []
+    for value in list(values) + list(fallback):
+        text = str(value or "").strip()
+        if text and text not in cleaned:
+            cleaned.append(text)
+    return cleaned[:limit]
 
 
 def normalize_card(card, word):
@@ -901,6 +955,14 @@ def normalize_card(card, word):
         "usage_note": str(card.get("usage_note_ru") or card.get("usage_note") or "").strip(),
         "emoji": sanitize_emoji(card.get("emoji") or card.get("emoji_context")),
     }
+    normalized["accepted_ru_variants"] = clean_variant_list(
+        card.get("accepted_ru_variants"),
+        [normalized["translation"]],
+    )
+    normalized["accepted_en_variants"] = clean_variant_list(
+        card.get("accepted_en_variants"),
+        [normalized["word"], word],
+    )
     normalized["emoji"] = normalized["emoji"] or choose_context_emoji(normalized)
     return normalized
 
@@ -1012,6 +1074,8 @@ def fallback_word_card(word):
         "phrase_en": f"I almost used '{clean_word}' in a meeting, then decided to sound like a person instead.",
         "phrase_ru": f"\u042f \u0447\u0443\u0442\u044c \u043d\u0435 \u0432\u0441\u0442\u0430\u0432\u0438\u043b '{clean_word}' \u043d\u0430 \u0441\u043e\u0432\u0435\u0449\u0430\u043d\u0438\u0438, \u043d\u043e \u0440\u0435\u0448\u0438\u043b \u0432\u0441\u0435-\u0442\u0430\u043a\u0438 \u0437\u0432\u0443\u0447\u0430\u0442\u044c \u043a\u0430\u043a \u0447\u0435\u043b\u043e\u0432\u0435\u043a.",
         "usage_note": "\u041a\u043e\u0433\u0434\u0430 \u043d\u0443\u0436\u043d\u043e \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e \u0432 \u0436\u0438\u0432\u043e\u043c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0435, \u0430 \u043d\u0435 \u0432 \u0441\u0443\u0445\u043e\u043c \u0441\u043b\u043e\u0432\u0430\u0440\u0435.",
+        "accepted_ru_variants": ["add OPENROUTER_API_KEY for automatic translation"],
+        "accepted_en_variants": [clean_word],
     }
     card["emoji"] = choose_context_emoji(card)
     return card
@@ -1150,13 +1214,24 @@ def save_word(user_id, card):
     with db_connect() as conn:
         conn.execute(
             """
-            INSERT INTO words(user_id, word, normalized_word, translation, phrase_en, phrase_ru, created_at, learned_from_practice)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO words(
+                user_id, word, normalized_word, translation, phrase_en, phrase_ru,
+                created_at, learned_from_practice, accepted_ru_variants, accepted_en_variants
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, normalized_word) DO UPDATE SET
                 translation = excluded.translation,
                 phrase_en = excluded.phrase_en,
                 phrase_ru = excluded.phrase_ru,
-                learned_from_practice = MAX(words.learned_from_practice, excluded.learned_from_practice)
+                learned_from_practice = MAX(words.learned_from_practice, excluded.learned_from_practice),
+                accepted_ru_variants = CASE
+                    WHEN words.accepted_ru_variants = '[]' THEN excluded.accepted_ru_variants
+                    ELSE words.accepted_ru_variants
+                END,
+                accepted_en_variants = CASE
+                    WHEN words.accepted_en_variants = '[]' THEN excluded.accepted_en_variants
+                    ELSE words.accepted_en_variants
+                END
             """,
             (
                 user_id,
@@ -1167,6 +1242,8 @@ def save_word(user_id, card):
                 card["phrase_ru"],
                 now_iso(),
                 learned_from_practice,
+                json.dumps(clean_variant_list(card.get("accepted_ru_variants"), [card["translation"]]), ensure_ascii=False),
+                json.dumps(clean_variant_list(card.get("accepted_en_variants"), [card["word"]]), ensure_ascii=False),
             ),
         )
         row = conn.execute(
@@ -1218,8 +1295,11 @@ def seed_suggested_words(conn):
     for item in SUGGESTED_WORDS:
         conn.execute(
             """
-            INSERT INTO suggested_words(word, translation, phrase_en, phrase_ru, answers_en, answers_ru, created_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO suggested_words(
+                word, translation, phrase_en, phrase_ru, answers_en, answers_ru,
+                accepted_en_variants, accepted_ru_variants, created_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(word) DO UPDATE SET
                 translation = excluded.translation,
                 phrase_en = excluded.phrase_en,
@@ -1232,6 +1312,8 @@ def seed_suggested_words(conn):
                 item["translation"],
                 item["phrase_en"],
                 item["phrase_ru"],
+                json.dumps(item.get("answers_en", []), ensure_ascii=False),
+                json.dumps(item.get("answers_ru", []), ensure_ascii=False),
                 json.dumps(item.get("answers_en", []), ensure_ascii=False),
                 json.dumps(item.get("answers_ru", []), ensure_ascii=False),
                 now_iso(),
@@ -1269,7 +1351,7 @@ def get_refresh_old_words(user_id):
     with db_connect() as conn:
         rows = conn.execute(
             """
-            SELECT word, translation, phrase_en, phrase_ru
+            SELECT word, translation, phrase_en, phrase_ru, accepted_ru_variants, accepted_en_variants
             FROM words
             WHERE user_id = ?
             ORDER BY times_sent ASC, RANDOM()
@@ -1324,6 +1406,8 @@ def create_refresh_session(user_id, old_words, new_words):
 
         prompt_side = choose_prompt_side(position)
         correct_answer = item["translation"] if prompt_side == "en" else item["word"]
+        accepted_ru_variants = item.get("accepted_ru_variants") or item.get("answers_ru") or "[]"
+        accepted_en_variants = item.get("accepted_en_variants") or item.get("answers_en") or "[]"
         items.append(
             {
                 "position": position,
@@ -1332,6 +1416,8 @@ def create_refresh_session(user_id, old_words, new_words):
                 "translation": item["translation"],
                 "prompt_side": prompt_side,
                 "correct_answer": correct_answer,
+                "accepted_ru_variants": accepted_ru_variants,
+                "accepted_en_variants": accepted_en_variants,
                 "suggested_word_id": suggested_word_id,
             }
         )
@@ -1350,9 +1436,10 @@ def create_refresh_session(user_id, old_words, new_words):
                 """
                 INSERT INTO refresh_session_items(
                     session_id, user_id, position, source, word, translation,
-                    prompt_side, correct_answer, suggested_word_id
+                    prompt_side, correct_answer, accepted_ru_variants, accepted_en_variants,
+                    suggested_word_id
                 )
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -1363,6 +1450,8 @@ def create_refresh_session(user_id, old_words, new_words):
                     item["translation"],
                     item["prompt_side"],
                     item["correct_answer"],
+                    item["accepted_ru_variants"],
+                    item["accepted_en_variants"],
                     item["suggested_word_id"],
                 ),
             )
@@ -1432,44 +1521,149 @@ def normalize_refresh_answer(text):
     return value
 
 
+def json_list(value):
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    try:
+        data = json.loads(value or "[]")
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [str(item).strip() for item in data if str(item).strip()]
+
+
 def answer_variants_for_item(item):
-    variants = [item["correct_answer"]]
-    if item.get("suggested_word_id"):
-        with db_connect() as conn:
-            row = conn.execute(
-                "SELECT answers_en, answers_ru FROM suggested_words WHERE id = ?",
-                (item["suggested_word_id"],),
-            ).fetchone()
-        if row:
-            key = "answers_ru" if item["prompt_side"] == "en" else "answers_en"
-            try:
-                variants.extend(json.loads(row[key] or "[]"))
-            except json.JSONDecodeError:
-                pass
+    variants = [item["correct_answer"], item["translation"], item["word"]]
+    if item["prompt_side"] == "en":
+        variants.extend(json_list(item.get("accepted_ru_variants")))
+    else:
+        variants.extend(json_list(item.get("accepted_en_variants")))
     return [normalize_refresh_answer(value) for value in variants if value]
 
 
-def classify_refresh_answer(answer, item):
+def local_refresh_match(answer, item):
     normalized = normalize_refresh_answer(answer)
     variants = answer_variants_for_item(item)
     variants = [variant for variant in variants if variant]
     if not normalized or not variants:
-        return "wrong"
-    if normalized in variants:
-        return "correct"
-    if any(normalized in variant or variant in normalized for variant in variants):
-        return "almost"
-    best_ratio = max(SequenceMatcher(None, normalized, variant).ratio() for variant in variants)
-    if best_ratio >= 0.82:
-        return "correct"
-    if best_ratio >= 0.58:
-        return "almost"
-    answer_tokens = set(normalized.split())
-    for variant in variants:
-        variant_tokens = set(variant.split())
-        if answer_tokens and len(answer_tokens & variant_tokens) >= 1:
-            return "almost"
-    return "wrong"
+        return False
+    return normalized in variants
+
+
+def refresh_judge_prompt(answer, item):
+    direction = "en_to_ru" if item["prompt_side"] == "en" else "ru_to_en"
+    variants = {
+        "accepted_ru_variants": json_list(item.get("accepted_ru_variants")),
+        "accepted_en_variants": json_list(item.get("accepted_en_variants")),
+    }
+    payload = {
+        "original_word": item["word"],
+        "main_translation": item["translation"],
+        "accepted_variants": variants,
+        "user_answer": answer,
+        "direction": direction,
+    }
+    return (
+        "You are a lenient semantic judge for a casual English recall mode. "
+        "Accept synonyms, natural paraphrases, different grammatical forms, and close everyday meanings. "
+        "Do not require exact wording. Return strict JSON only with keys: "
+        "is_correct, is_close, best_answer, short_feedback.\n\n"
+        f"{json.dumps(payload, ensure_ascii=False)}"
+    )
+
+
+def normalize_judge_result(data, item):
+    return {
+        "is_correct": bool(data.get("is_correct")),
+        "is_close": bool(data.get("is_close")),
+        "best_answer": str(data.get("best_answer") or item["correct_answer"]).strip(),
+        "short_feedback": str(data.get("short_feedback") or "").strip(),
+    }
+
+
+def ai_refresh_judge(answer, item):
+    if not OPENROUTER_API_KEY:
+        return None
+
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "messages": [{"role": "user", "content": refresh_judge_prompt(answer, item)}],
+        "response_format": {"type": "json_object"},
+    }
+    req = urllib.request.Request(
+        OPENROUTER_API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://english-telegram-bot.local",
+            "X-Title": "English Telegram Bot",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=OPENROUTER_JUDGE_TIMEOUT) as response:
+            data = json.loads(response.read().decode("utf-8", errors="replace"))
+        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if isinstance(text, list):
+            text = "".join(item.get("text", "") for item in text if isinstance(item, dict))
+        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", str(text).strip(), flags=re.IGNORECASE)
+        return normalize_judge_result(json.loads(text), item)
+    except Exception as exc:
+        print(f"refresh_judge_error: {type(exc).__name__}: {exc}", flush=True)
+        return None
+
+
+def append_unique_variant(raw_json, value):
+    variants = json_list(raw_json)
+    normalized_value = normalize_refresh_answer(value)
+    if not normalized_value:
+        return raw_json or "[]", False
+    if normalized_value in {normalize_refresh_answer(item) for item in variants}:
+        return json.dumps(variants, ensure_ascii=False), False
+    variants.append(value.strip())
+    return json.dumps(variants[:12], ensure_ascii=False), True
+
+
+def add_accepted_refresh_variant(user_id, item, answer):
+    column = "accepted_ru_variants" if item["prompt_side"] == "en" else "accepted_en_variants"
+    variant_added = False
+    with db_connect() as conn:
+        session_json, added = append_unique_variant(item.get(column), answer)
+        variant_added = variant_added or added
+        conn.execute(
+            f"UPDATE refresh_session_items SET {column} = ? WHERE id = ?",
+            (session_json, item["id"]),
+        )
+        if item.get("suggested_word_id"):
+            row = conn.execute(
+                f"SELECT {column} FROM suggested_words WHERE id = ?",
+                (item["suggested_word_id"],),
+            ).fetchone()
+            if row:
+                new_json, added = append_unique_variant(row[column], answer)
+                variant_added = variant_added or added
+                conn.execute(
+                    f"UPDATE suggested_words SET {column} = ? WHERE id = ?",
+                    (new_json, item["suggested_word_id"]),
+                )
+        row = conn.execute(
+            f"""
+            SELECT id, {column} FROM words
+            WHERE user_id = ? AND normalized_word = ?
+            LIMIT 1
+            """,
+            (user_id, normalize_word(item["word"])),
+        ).fetchone()
+        if row:
+            new_json, added = append_unique_variant(row[column], answer)
+            variant_added = variant_added or added
+            conn.execute(
+                f"UPDATE words SET {column} = ? WHERE id = ?",
+                (new_json, row["id"]),
+            )
+    return variant_added
 
 
 def refresh_feedback(result, item):
@@ -1479,6 +1673,13 @@ def refresh_feedback(result, item):
     if result == "almost":
         return f"\u041f\u043e\u0447\u0442\u0438 \U0001f440\n\n\u0411\u043b\u0438\u0436\u0435 \u0431\u0443\u0434\u0435\u0442:\n{answer}"
     return f"\u041d\u0435 \u0441\u043e\u0432\u0441\u0435\u043c \u044d\u0442\u043e \u0441\u043b\u043e\u0432\u043e \U0001f440\n\n\u0422\u0443\u0442 \u0441\u043a\u043e\u0440\u0435\u0435:\n{answer}"
+
+
+def refresh_ai_feedback(judge):
+    best_answer = escape(judge.get("best_answer") or "")
+    if best_answer:
+        return f"\u0414\u0430, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e \U0001f44c\n\n\u0415\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u043e:\n{best_answer}"
+    return "\u0414\u0430, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e \U0001f44c"
 
 
 def save_refresh_answer(session_id, position, user_answer, result):
@@ -1518,7 +1719,8 @@ def finish_refresh_session(user_id, chat_id, session_id):
         ).fetchone()
         rows = conn.execute(
             """
-            SELECT sw.word, sw.translation, sw.phrase_en, sw.phrase_ru
+            SELECT sw.word, sw.translation, sw.phrase_en, sw.phrase_ru,
+                   sw.accepted_ru_variants, sw.accepted_en_variants
             FROM refresh_session_items rsi
             JOIN suggested_words sw ON sw.id = rsi.suggested_word_id
             WHERE rsi.session_id = ? AND rsi.source = 'new'
@@ -1550,6 +1752,8 @@ def finish_refresh_session(user_id, chat_id, session_id):
                 "translation": row["translation"],
                 "phrase_en": row["phrase_en"],
                 "phrase_ru": row["phrase_ru"],
+                "accepted_ru_variants": json_list(row["accepted_ru_variants"]),
+                "accepted_en_variants": json_list(row["accepted_en_variants"]),
             },
         )
 
@@ -1601,9 +1805,35 @@ def handle_refresh_answer(chat_id, user_id, text):
         finish_refresh_session(user_id, chat_id, session["id"])
         return True
 
-    result = classify_refresh_answer(text, item)
+    local_match = local_refresh_match(text, item)
+    ai_judge_called = False
+    ai_judge_result = None
+    variant_added = False
+
+    if local_match:
+        result = "correct"
+        feedback = refresh_feedback(result, item)
+    else:
+        ai_judge_called = True
+        ai_judge_result = ai_refresh_judge(text, item)
+        if ai_judge_result and (ai_judge_result["is_correct"] or ai_judge_result["is_close"]):
+            result = "correct" if ai_judge_result["is_correct"] else "almost"
+            variant_added = add_accepted_refresh_variant(user_id, item, text)
+            feedback = refresh_ai_feedback(ai_judge_result)
+        else:
+            result = "wrong"
+            feedback = refresh_feedback(result, item)
+
+    print(
+        "refresh_check "
+        f"session_id={session['id']} position={position} "
+        f"local_match={local_match} ai_judge_called={ai_judge_called} "
+        f"ai_judge_result={json.dumps(ai_judge_result, ensure_ascii=False) if ai_judge_result else None} "
+        f"variant_added={variant_added}",
+        flush=True,
+    )
     save_refresh_answer(session["id"], position, text, result)
-    send_message(chat_id, refresh_feedback(result, item))
+    send_message(chat_id, feedback)
 
     next_position = position + 1
     if next_position > REFRESH_TOTAL_ITEMS:
