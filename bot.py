@@ -849,6 +849,14 @@ def practice_keyboard():
     }
 
 
+def refresh_reply_markup():
+    return {
+        "force_reply": True,
+        "input_field_placeholder": "\u041d\u0430\u043f\u0438\u0448\u0438 \u043f\u0435\u0440\u0435\u0432\u043e\u0434",
+        "selective": False,
+    }
+
+
 def practice_vocab_keyboard(scenario):
     buttons = [
         {
@@ -1520,7 +1528,7 @@ def send_refresh_question(chat_id, session_id, position):
     item = get_refresh_item(session_id, position)
     if not item:
         return False
-    send_message(chat_id, refresh_question_text(item))
+    send_message(chat_id, refresh_question_text(item), reply_markup=refresh_reply_markup())
     return True
 
 
@@ -1543,13 +1551,29 @@ def json_list(value):
     return [str(item).strip() for item in data if str(item).strip()]
 
 
+def expand_answer_variants(values):
+    expanded = []
+    for value in values:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        pieces = [text]
+        pieces.extend(re.split(r"\s*(?:/|,|;|\||\bor\b|\bили\b)\s*", text, flags=re.IGNORECASE))
+        pieces.extend(re.findall(r"\(([^)]+)\)", text))
+        for piece in pieces:
+            normalized = normalize_refresh_answer(piece)
+            if normalized and normalized not in expanded:
+                expanded.append(normalized)
+    return expanded
+
+
 def answer_variants_for_item(item):
     variants = [item["correct_answer"], item["translation"], item["word"]]
     if item["prompt_side"] == "en":
         variants.extend(json_list(item.get("accepted_ru_variants")))
     else:
         variants.extend(json_list(item.get("accepted_en_variants")))
-    return [normalize_refresh_answer(value) for value in variants if value]
+    return expand_answer_variants(variants)
 
 
 def local_refresh_match(answer, item):
@@ -1558,7 +1582,12 @@ def local_refresh_match(answer, item):
     variants = [variant for variant in variants if variant]
     if not normalized or not variants:
         return False
-    return normalized in variants
+    if normalized in variants:
+        return True
+    return any(
+        len(variant) >= 5 and (normalized in variant or variant in normalized)
+        for variant in variants
+    )
 
 
 def refresh_judge_prompt(answer, item):
@@ -1844,7 +1873,7 @@ def handle_refresh_answer(chat_id, user_id, text):
         flush=True,
     )
     save_refresh_answer(session["id"], position, text, result)
-    send_message(chat_id, feedback)
+    send_message(chat_id, feedback, reply_markup=refresh_reply_markup())
 
     next_position = position + 1
     if next_position > REFRESH_TOTAL_ITEMS:
