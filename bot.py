@@ -9,6 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from difflib import SequenceMatcher
 from datetime import datetime, timedelta, timezone as dt_timezone
 from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -70,6 +71,62 @@ CYRILLIC_MEME_REACTIONS = [
 PRACTICE_BUTTON = "\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438"
 NEXT_PRACTICE_BUTTON = "Next moment"
 BACK_TO_MENU_BUTTON = "Back to menu"
+REFRESH_BUTTON = "\U0001f9e0 \u041e\u0441\u0432\u0435\u0436\u0438\u0442\u044c"
+REFRESH_COMMANDS = ("/refresh", "/recall")
+REFRESH_TOTAL_ITEMS = 15
+REFRESH_OLD_WORDS_COUNT = 13
+REFRESH_COOLDOWN_HOURS = 4
+REFRESH_NEW_WORD_POSITIONS = {5, 11}
+SUGGESTED_WORDS = [
+    {
+        "word": "overthinking",
+        "translation": "\u043d\u0430\u043a\u0440\u0443\u0447\u0438\u0432\u0430\u0442\u044c \u0441\u0435\u0431\u044f",
+        "phrase_en": "I think you're overthinking this.",
+        "phrase_ru": "\u041f\u043e-\u043c\u043e\u0435\u043c\u0443, \u0442\u044b \u0441\u0435\u0431\u044f \u043d\u0430\u043a\u0440\u0443\u0447\u0438\u0432\u0430\u0435\u0448\u044c.",
+        "answers_en": ("overthinking", "overthink", "overthink it"),
+        "answers_ru": ("\u043d\u0430\u043a\u0440\u0443\u0447\u0438\u0432\u0430\u0442\u044c \u0441\u0435\u0431\u044f", "\u0437\u0430\u0433\u043e\u043d\u044f\u0442\u044c\u0441\u044f", "\u043f\u0435\u0440\u0435\u0436\u0438\u0432\u0430\u0442\u044c \u043b\u0438\u0448\u043d\u0435\u0433\u043e"),
+    },
+    {
+        "word": "awkward",
+        "translation": "\u043d\u0435\u043b\u043e\u0432\u043a\u0438\u0439",
+        "phrase_en": "That was awkward, but we survived.",
+        "phrase_ru": "\u0411\u044b\u043b\u043e \u043d\u0435\u043b\u043e\u0432\u043a\u043e, \u043d\u043e \u043c\u044b \u0432\u044b\u0436\u0438\u043b\u0438.",
+        "answers_en": ("awkward", "uncomfortable", "cringe"),
+        "answers_ru": ("\u043d\u0435\u043b\u043e\u0432\u043a\u0438\u0439", "\u043d\u0435\u0443\u0434\u043e\u0431\u043d\u044b\u0439", "\u043a\u0440\u0438\u043d\u0436\u043e\u0432\u044b\u0439"),
+    },
+    {
+        "word": "overwhelmed",
+        "translation": "\u043f\u0435\u0440\u0435\u0433\u0440\u0443\u0436\u0435\u043d / \u0432\u0441\u0435\u0433\u043e \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e",
+        "phrase_en": "I've been a bit overwhelmed lately.",
+        "phrase_ru": "\u0412 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043c\u0435\u043d\u044f \u0432\u0441\u0435 \u043d\u0435\u043c\u043d\u043e\u0433\u043e \u043d\u0430\u043a\u0440\u044b\u043b\u043e.",
+        "answers_en": ("overwhelmed", "swamped", "too much"),
+        "answers_ru": ("\u043f\u0435\u0440\u0435\u0433\u0440\u0443\u0436\u0435\u043d", "\u043d\u0430\u043a\u0440\u044b\u043b\u043e", "\u0432\u0441\u0435\u0433\u043e \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e"),
+    },
+    {
+        "word": "to ghost someone",
+        "translation": "\u043f\u0440\u043e\u043f\u0430\u0441\u0442\u044c \u0438 \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0442\u044c",
+        "phrase_en": "I didn't mean to ghost you.",
+        "phrase_ru": "\u042f \u043d\u0435 \u0445\u043e\u0442\u0435\u043b \u043f\u0440\u043e\u043f\u0430\u0434\u0430\u0442\u044c \u0438 \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0442\u044c.",
+        "answers_en": ("ghost", "to ghost someone", "ghost someone"),
+        "answers_ru": ("\u043f\u0440\u043e\u043f\u0430\u0441\u0442\u044c", "\u0438\u0433\u043d\u043e\u0440\u0438\u0442\u044c", "\u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0442\u044c"),
+    },
+    {
+        "word": "low-key",
+        "translation": "\u043d\u0435\u043c\u043d\u043e\u0433\u043e / \u0432\u0442\u0438\u0445\u0443\u044e",
+        "phrase_en": "I'm low-key excited about it.",
+        "phrase_ru": "\u042f \u0442\u0430\u043a \u043d\u0435\u043c\u043d\u043e\u0433\u043e \u0440\u0430\u0434\u0443\u044e\u0441\u044c \u044d\u0442\u043e\u043c\u0443.",
+        "answers_en": ("low-key", "lowkey"),
+        "answers_ru": ("\u043d\u0435\u043c\u043d\u043e\u0433\u043e", "\u0432\u0442\u0438\u0445\u0443\u044e", "\u043f\u043e\u0442\u0438\u0445\u043e\u043d\u044c\u043a\u0443"),
+    },
+    {
+        "word": "to catch up",
+        "translation": "\u043d\u0430\u0433\u043d\u0430\u0442\u044c / \u043f\u043e\u0431\u043e\u043b\u0442\u0430\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u043f\u0430\u0443\u0437\u044b",
+        "phrase_en": "Let's catch up this week.",
+        "phrase_ru": "\u0414\u0430\u0432\u0430\u0439 \u043d\u0430 \u044d\u0442\u043e\u0439 \u043d\u0435\u0434\u0435\u043b\u0435 \u043f\u043e\u0431\u043e\u043b\u0442\u0430\u0435\u043c.",
+        "answers_en": ("catch up", "to catch up"),
+        "answers_ru": ("\u043d\u0430\u0433\u043d\u0430\u0442\u044c", "\u043f\u043e\u0431\u043e\u043b\u0442\u0430\u0442\u044c", "\u043d\u0430\u0432\u0435\u0440\u0441\u0442\u0430\u0442\u044c"),
+    },
+]
 PRACTICE_POSITIVE_REACTIONS = [
     "\u0412\u043e\u0442 \u044d\u0442\u043e \u0443\u0436\u0435 \u0437\u0432\u0443\u0447\u0438\u0442 \u0436\u0438\u0432\u043e \U0001f44c",
     "Good. \u042d\u0442\u043e \u0443\u0436\u0435 \u043d\u0435 \u0448\u043a\u043e\u043b\u044c\u043d\u044b\u0439 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438\u0439.",
@@ -369,6 +426,18 @@ def init_db():
             conn.execute(
                 "ALTER TABLE users ADD COLUMN practice_correct_count INTEGER NOT NULL DEFAULT 0"
             )
+        if "refresh_mode" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN refresh_mode INTEGER NOT NULL DEFAULT 0"
+            )
+        if "current_refresh_session_id" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN current_refresh_session_id INTEGER"
+            )
+        if "last_refresh_at" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN last_refresh_at TEXT"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS words (
@@ -391,6 +460,71 @@ def init_db():
             conn.execute(
                 "ALTER TABLE words ADD COLUMN learned_from_practice INTEGER NOT NULL DEFAULT 0"
             )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                word_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, word_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO user_words(user_id, word_id, created_at)
+            SELECT user_id, id, created_at FROM words
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS suggested_words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word TEXT NOT NULL UNIQUE,
+                translation TEXT NOT NULL,
+                phrase_en TEXT NOT NULL,
+                phrase_ru TEXT NOT NULL,
+                answers_en TEXT NOT NULL DEFAULT '[]',
+                answers_ru TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS refresh_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                started_at TEXT NOT NULL,
+                finished_at TEXT,
+                current_position INTEGER NOT NULL DEFAULT 1,
+                remembered_count INTEGER NOT NULL DEFAULT 0,
+                new_words_count INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS refresh_session_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                word TEXT NOT NULL,
+                translation TEXT NOT NULL,
+                prompt_side TEXT NOT NULL,
+                correct_answer TEXT NOT NULL,
+                user_answer TEXT,
+                result TEXT,
+                suggested_word_id INTEGER,
+                answered_at TEXT,
+                UNIQUE(session_id, position)
+            )
+            """
+        )
+        seed_suggested_words(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS reminder_log (
@@ -663,7 +797,10 @@ def send_cyrillic_meme_reaction(chat_id):
 
 def main_keyboard():
     return {
-        "keyboard": [[{"text": "\u0428\u0430\u0440\u044e"}, {"text": PRACTICE_BUTTON}]],
+        "keyboard": [
+            [{"text": "\u0428\u0430\u0440\u044e"}, {"text": PRACTICE_BUTTON}],
+            [{"text": REFRESH_BUTTON}],
+        ],
         "resize_keyboard": True,
         "is_persistent": True,
     }
@@ -950,6 +1087,42 @@ def set_practice_state(user_id, practice_mode, scenario_id=None):
         )
 
 
+def set_refresh_state(user_id, refresh_mode, session_id=None):
+    with db_connect() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET refresh_mode = ?, current_refresh_session_id = ?
+            WHERE user_id = ?
+            """,
+            (1 if refresh_mode else 0, session_id, user_id),
+        )
+
+
+def get_user_refresh_state(user_id):
+    with db_connect() as conn:
+        row = conn.execute(
+            """
+            SELECT refresh_mode, current_refresh_session_id, last_refresh_at
+            FROM users
+            WHERE user_id = ?
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+    if not row:
+        return {
+            "refresh_mode": False,
+            "current_refresh_session_id": None,
+            "last_refresh_at": None,
+        }
+    return {
+        "refresh_mode": bool(row["refresh_mode"]),
+        "current_refresh_session_id": row["current_refresh_session_id"],
+        "last_refresh_at": row["last_refresh_at"],
+    }
+
+
 def record_practice_result(user_id, is_good):
     state = get_user_practice_state(user_id)
     level = min(max(int(state.get("practice_level") or 1), 1), 4)
@@ -996,6 +1169,22 @@ def save_word(user_id, card):
                 learned_from_practice,
             ),
         )
+        row = conn.execute(
+            """
+            SELECT id FROM words
+            WHERE user_id = ? AND normalized_word = ?
+            LIMIT 1
+            """,
+            (user_id, normalized),
+        ).fetchone()
+        if row:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO user_words(user_id, word_id, created_at)
+                VALUES(?, ?, ?)
+                """,
+                (user_id, row["id"], now_iso()),
+            )
 
 
 def find_saved_word(user_id, word):
@@ -1023,6 +1212,406 @@ def list_words_message(user_id):
 
     body = "\n".join(f"- {escape(row['word'])} - {escape(row['translation'])}" for row in rows)
     return f"<b>\u0428\u0430\u0440\u0438\u0448\u044c \u0432 \u044d\u0442\u0438\u0445 \u0441\u043b\u043e\u0432\u0430\u0445:</b>\n{body}"
+
+
+def seed_suggested_words(conn):
+    for item in SUGGESTED_WORDS:
+        conn.execute(
+            """
+            INSERT INTO suggested_words(word, translation, phrase_en, phrase_ru, answers_en, answers_ru, created_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(word) DO UPDATE SET
+                translation = excluded.translation,
+                phrase_en = excluded.phrase_en,
+                phrase_ru = excluded.phrase_ru,
+                answers_en = excluded.answers_en,
+                answers_ru = excluded.answers_ru
+            """,
+            (
+                item["word"],
+                item["translation"],
+                item["phrase_en"],
+                item["phrase_ru"],
+                json.dumps(item.get("answers_en", []), ensure_ascii=False),
+                json.dumps(item.get("answers_ru", []), ensure_ascii=False),
+                now_iso(),
+            ),
+        )
+
+
+def parse_iso_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def refresh_cooldown_left(user_id):
+    state = get_user_refresh_state(user_id)
+    last_refresh = parse_iso_datetime(state.get("last_refresh_at"))
+    if not last_refresh:
+        return timedelta(0)
+    available_at = last_refresh + timedelta(hours=REFRESH_COOLDOWN_HOURS)
+    return max(available_at - datetime.now(), timedelta(0))
+
+
+def format_cooldown(delta):
+    total_minutes = max(1, int(delta.total_seconds() // 60))
+    hours, minutes = divmod(total_minutes, 60)
+    if hours:
+        return f"{hours}\u0447 {minutes:02d}\u043c"
+    return f"{minutes}\u043c"
+
+
+def get_refresh_old_words(user_id):
+    with db_connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT word, translation, phrase_en, phrase_ru
+            FROM words
+            WHERE user_id = ?
+            ORDER BY times_sent ASC, RANDOM()
+            LIMIT ?
+            """,
+            (user_id, REFRESH_OLD_WORDS_COUNT),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_refresh_new_words(user_id, limit=2):
+    with db_connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT sw.*
+            FROM suggested_words sw
+            WHERE NOT EXISTS (
+                SELECT 1 FROM words w
+                WHERE w.user_id = ? AND w.normalized_word = lower(sw.word)
+            )
+            ORDER BY RANDOM()
+            LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+        if len(rows) < limit:
+            rows = conn.execute(
+                "SELECT * FROM suggested_words ORDER BY RANDOM() LIMIT ?",
+                (limit,),
+            ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def choose_prompt_side(position):
+    return "en" if position % 2 else "ru"
+
+
+def create_refresh_session(user_id, old_words, new_words):
+    now = now_iso()
+    old_iter = iter(old_words)
+    new_iter = iter(new_words)
+    items = []
+    for position in range(1, REFRESH_TOTAL_ITEMS + 1):
+        if position in REFRESH_NEW_WORD_POSITIONS:
+            source = "new"
+            item = next(new_iter)
+            suggested_word_id = item["id"]
+        else:
+            source = "old"
+            item = next(old_iter)
+            suggested_word_id = None
+
+        prompt_side = choose_prompt_side(position)
+        correct_answer = item["translation"] if prompt_side == "en" else item["word"]
+        items.append(
+            {
+                "position": position,
+                "source": source,
+                "word": item["word"],
+                "translation": item["translation"],
+                "prompt_side": prompt_side,
+                "correct_answer": correct_answer,
+                "suggested_word_id": suggested_word_id,
+            }
+        )
+
+    with db_connect() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO refresh_sessions(user_id, started_at, current_position, new_words_count)
+            VALUES(?, ?, 1, ?)
+            """,
+            (user_id, now, len(new_words)),
+        )
+        session_id = cursor.lastrowid
+        for item in items:
+            conn.execute(
+                """
+                INSERT INTO refresh_session_items(
+                    session_id, user_id, position, source, word, translation,
+                    prompt_side, correct_answer, suggested_word_id
+                )
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    user_id,
+                    item["position"],
+                    item["source"],
+                    item["word"],
+                    item["translation"],
+                    item["prompt_side"],
+                    item["correct_answer"],
+                    item["suggested_word_id"],
+                ),
+            )
+        conn.execute(
+            """
+            UPDATE users
+            SET refresh_mode = 1, current_refresh_session_id = ?
+            WHERE user_id = ?
+            """,
+            (session_id, user_id),
+        )
+    return session_id
+
+
+def get_refresh_item(session_id, position):
+    with db_connect() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM refresh_session_items
+            WHERE session_id = ? AND position = ?
+            LIMIT 1
+            """,
+            (session_id, position),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_active_refresh_session(user_id):
+    state = get_user_refresh_state(user_id)
+    session_id = state.get("current_refresh_session_id")
+    if not state.get("refresh_mode") or not session_id:
+        return None
+    with db_connect() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM refresh_sessions
+            WHERE id = ? AND user_id = ? AND finished_at IS NULL
+            LIMIT 1
+            """,
+            (session_id, user_id),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def refresh_question_text(item):
+    prompt = item["word"] if item["prompt_side"] == "en" else item["translation"]
+    question = (
+        "\u043a\u0430\u043a \u044d\u0442\u043e \u043f\u043e-\u0440\u0443\u0441\u0441\u043a\u0438?"
+        if item["prompt_side"] == "en"
+        else "\u043a\u0430\u043a \u044d\u0442\u043e \u043e\u0431\u044b\u0447\u043d\u043e \u0433\u043e\u0432\u043e\u0440\u044f\u0442 \u043f\u043e-\u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438?"
+    )
+    return f"\U0001f9e0 {item['position']}/{REFRESH_TOTAL_ITEMS}\n\n{escape(prompt)}\n\n{question}"
+
+
+def send_refresh_question(chat_id, session_id, position):
+    item = get_refresh_item(session_id, position)
+    if not item:
+        return False
+    send_message(chat_id, refresh_question_text(item))
+    return True
+
+
+def normalize_refresh_answer(text):
+    value = (text or "").strip().lower().replace("\u0451", "\u0435")
+    value = re.sub(r"[^\w\s'-]+", " ", value, flags=re.UNICODE)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def answer_variants_for_item(item):
+    variants = [item["correct_answer"]]
+    if item.get("suggested_word_id"):
+        with db_connect() as conn:
+            row = conn.execute(
+                "SELECT answers_en, answers_ru FROM suggested_words WHERE id = ?",
+                (item["suggested_word_id"],),
+            ).fetchone()
+        if row:
+            key = "answers_ru" if item["prompt_side"] == "en" else "answers_en"
+            try:
+                variants.extend(json.loads(row[key] or "[]"))
+            except json.JSONDecodeError:
+                pass
+    return [normalize_refresh_answer(value) for value in variants if value]
+
+
+def classify_refresh_answer(answer, item):
+    normalized = normalize_refresh_answer(answer)
+    variants = answer_variants_for_item(item)
+    variants = [variant for variant in variants if variant]
+    if not normalized or not variants:
+        return "wrong"
+    if normalized in variants:
+        return "correct"
+    if any(normalized in variant or variant in normalized for variant in variants):
+        return "almost"
+    best_ratio = max(SequenceMatcher(None, normalized, variant).ratio() for variant in variants)
+    if best_ratio >= 0.82:
+        return "correct"
+    if best_ratio >= 0.58:
+        return "almost"
+    answer_tokens = set(normalized.split())
+    for variant in variants:
+        variant_tokens = set(variant.split())
+        if answer_tokens and len(answer_tokens & variant_tokens) >= 1:
+            return "almost"
+    return "wrong"
+
+
+def refresh_feedback(result, item):
+    answer = escape(item["correct_answer"])
+    if result == "correct":
+        return "Yep, this works \U0001f44c"
+    if result == "almost":
+        return f"\u041f\u043e\u0447\u0442\u0438 \U0001f440\n\n\u0411\u043b\u0438\u0436\u0435 \u0431\u0443\u0434\u0435\u0442:\n{answer}"
+    return f"\u041d\u0435 \u0441\u043e\u0432\u0441\u0435\u043c \u044d\u0442\u043e \u0441\u043b\u043e\u0432\u043e \U0001f440\n\n\u0422\u0443\u0442 \u0441\u043a\u043e\u0440\u0435\u0435:\n{answer}"
+
+
+def save_refresh_answer(session_id, position, user_answer, result):
+    with db_connect() as conn:
+        conn.execute(
+            """
+            UPDATE refresh_session_items
+            SET user_answer = ?, result = ?, answered_at = ?
+            WHERE session_id = ? AND position = ?
+            """,
+            (user_answer, result, now_iso(), session_id, position),
+        )
+        remembered_count = conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM refresh_session_items
+            WHERE session_id = ? AND result IN ('correct', 'almost')
+            """,
+            (session_id,),
+        ).fetchone()["count"]
+        conn.execute(
+            """
+            UPDATE refresh_sessions
+            SET remembered_count = ?, current_position = ?
+            WHERE id = ?
+            """,
+            (remembered_count, position + 1, session_id),
+        )
+
+
+def finish_refresh_session(user_id, chat_id, session_id):
+    now = now_iso()
+    with db_connect() as conn:
+        session = conn.execute(
+            "SELECT remembered_count, new_words_count FROM refresh_sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+        rows = conn.execute(
+            """
+            SELECT sw.word, sw.translation, sw.phrase_en, sw.phrase_ru
+            FROM refresh_session_items rsi
+            JOIN suggested_words sw ON sw.id = rsi.suggested_word_id
+            WHERE rsi.session_id = ? AND rsi.source = 'new'
+            """,
+            (session_id,),
+        ).fetchall()
+        conn.execute(
+            """
+            UPDATE refresh_sessions
+            SET finished_at = ?
+            WHERE id = ?
+            """,
+            (now, session_id),
+        )
+        conn.execute(
+            """
+            UPDATE users
+            SET refresh_mode = 0, current_refresh_session_id = NULL, last_refresh_at = ?
+            WHERE user_id = ?
+            """,
+            (now, user_id),
+        )
+
+    for row in rows:
+        save_word(
+            user_id,
+            {
+                "word": row["word"],
+                "translation": row["translation"],
+                "phrase_en": row["phrase_en"],
+                "phrase_ru": row["phrase_ru"],
+            },
+        )
+
+    remembered = session["remembered_count"] if session else 0
+    new_words = session["new_words_count"] if session else 0
+    send_message(
+        chat_id,
+        f"Done \U0001f440\n\n"
+        f"\u0422\u044b \u0432\u0441\u043f\u043e\u043c\u043d\u0438\u043b: {remembered}/{REFRESH_TOTAL_ITEMS}\n"
+        f"\u041d\u043e\u0432\u044b\u0435 \u0441\u043b\u043e\u0432\u0430: {new_words}\n\n"
+        "[result_phrase_placeholder]",
+    )
+
+
+def start_refresh_mode(chat_id, user_id):
+    cooldown = refresh_cooldown_left(user_id)
+    if cooldown > timedelta(0):
+        send_message(
+            chat_id,
+            "\u041f\u0430\u043c\u044f\u0442\u044c \u0435\u0449\u0451 \u043d\u0435 \u043e\u0441\u0442\u044b\u043b\u0430 \U0001f440\n\n"
+            f"\u041c\u043e\u0436\u043d\u043e \u0441\u043d\u043e\u0432\u0430 \u0447\u0435\u0440\u0435\u0437: {format_cooldown(cooldown)}",
+        )
+        return
+
+    old_words = get_refresh_old_words(user_id)
+    if len(old_words) < REFRESH_OLD_WORDS_COUNT:
+        send_message(
+            chat_id,
+            "\u041f\u043e\u043a\u0430 \u043c\u0430\u043b\u043e\u0432\u0430\u0442\u043e \u0441\u043b\u043e\u0432 \u0434\u043b\u044f \u043e\u0441\u0432\u0435\u0436\u0435\u043d\u0438\u044f \U0001f440\n\n"
+            "\u0414\u043e\u0431\u0430\u0432\u044c \u0445\u043e\u0442\u044f \u0431\u044b 13 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438\u0445 \u0441\u043b\u043e\u0432,\n"
+            "\u0438 \u044f \u0441\u043e\u0431\u0435\u0440\u0443 \u0442\u0435\u0431\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 recall.",
+        )
+        return
+
+    set_practice_state(user_id, False)
+    session_id = create_refresh_session(user_id, old_words, get_refresh_new_words(user_id, 2))
+    send_refresh_question(chat_id, session_id, 1)
+
+
+def handle_refresh_answer(chat_id, user_id, text):
+    session = get_active_refresh_session(user_id)
+    if not session:
+        set_refresh_state(user_id, False)
+        return False
+
+    position = int(session["current_position"] or 1)
+    item = get_refresh_item(session["id"], position)
+    if not item:
+        finish_refresh_session(user_id, chat_id, session["id"])
+        return True
+
+    result = classify_refresh_answer(text, item)
+    save_refresh_answer(session["id"], position, text, result)
+    send_message(chat_id, refresh_feedback(result, item))
+
+    next_position = position + 1
+    if next_position > REFRESH_TOTAL_ITEMS:
+        finish_refresh_session(user_id, chat_id, session["id"])
+        return True
+
+    send_refresh_question(chat_id, session["id"], next_position)
+    return True
 
 
 def format_card(card, label=None):
@@ -1339,6 +1928,7 @@ def handle_message(message):
 
     if text.startswith("/start"):
         set_practice_state(user_id, False)
+        set_refresh_state(user_id, False)
         send_message(
             chat_id,
             "\u041f\u0440\u0438\u0432\u0435\u0442. \u042d\u0442\u043e \u043d\u0435 \u0443\u0447\u0435\u0431\u043d\u0438\u043a \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0433\u043e \U0001f642\n\n"
@@ -1353,8 +1943,12 @@ def handle_message(message):
             "\u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e:\n"
             "awkward, overwhelmed, deadline\n\n"
             "\u0438\u043b\u0438 \u043d\u0430\u0436\u043c\u0438:\n\n"
-            "\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438",
+            "\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438 / \U0001f9e0 \u041e\u0441\u0432\u0435\u0436\u0438\u0442\u044c",
         )
+        return
+
+    if get_user_refresh_state(user_id).get("refresh_mode"):
+        handle_refresh_answer(chat_id, user_id, text)
         return
 
     if text.startswith("/words") or text == "\u0428\u0430\u0440\u044e":
@@ -1362,7 +1956,7 @@ def handle_message(message):
         return
 
     if text.startswith("/help"):
-        send_message(chat_id, "\u041a\u043d\u043e\u043f\u043a\u0430 \u00ab\u0428\u0430\u0440\u044e\u00bb - \u0441\u043f\u0438\u0441\u043e\u043a \u0441\u043b\u043e\u0432.\n/tz Europe/Moscow - \u0447\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441.\n\n\u0427\u0442\u043e\u0431\u044b \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e, \u043f\u0440\u043e\u0441\u0442\u043e \u043e\u0442\u043f\u0440\u0430\u0432\u044c \u0435\u0433\u043e.")
+        send_message(chat_id, "\u041a\u043d\u043e\u043f\u043a\u0430 \u00ab\u0428\u0430\u0440\u044e\u00bb - \u0441\u043f\u0438\u0441\u043e\u043a \u0441\u043b\u043e\u0432.\n\U0001f9e0 \u041e\u0441\u0432\u0435\u0436\u0438\u0442\u044c - \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 recall.\n/tz Europe/Moscow - \u0447\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441.\n\n\u0427\u0442\u043e\u0431\u044b \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e, \u043f\u0440\u043e\u0441\u0442\u043e \u043e\u0442\u043f\u0440\u0430\u0432\u044c \u0435\u0433\u043e.")
         return
 
     if text.startswith("/tz"):
@@ -1380,20 +1974,26 @@ def handle_message(message):
         return
 
     if text == PRACTICE_BUTTON or text == NEXT_PRACTICE_BUTTON:
+        set_refresh_state(user_id, False)
         send_practice_scenario(chat_id, user_id)
+        return
+
+    if text == REFRESH_BUTTON or text.startswith(REFRESH_COMMANDS):
+        start_refresh_mode(chat_id, user_id)
         return
 
     if text == BACK_TO_MENU_BUTTON:
         set_practice_state(user_id, False)
+        set_refresh_state(user_id, False)
         send_message(chat_id, "\u0412\u0435\u0440\u043d\u0443\u043b\u0438\u0441\u044c \u0432 \u043c\u0435\u043d\u044e. \u041a\u0438\u0434\u0430\u0439 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0436\u043c\u0438 \u00ab\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438\u00bb.")
-        return
-
-    if contains_cyrillic(text):
-        send_cyrillic_meme_reaction(chat_id)
         return
 
     if get_user_practice_state(user_id).get("practice_mode"):
         handle_practice_answer(chat_id, user_id, text)
+        return
+
+    if contains_cyrillic(text):
+        send_cyrillic_meme_reaction(chat_id)
         return
 
     if not is_valid_english_input(text):
