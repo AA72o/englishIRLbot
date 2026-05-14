@@ -77,6 +77,13 @@ REFRESH_TOTAL_ITEMS = 15
 REFRESH_OLD_WORDS_COUNT = 13
 REFRESH_COOLDOWN_HOURS = 4
 REFRESH_NEW_WORD_POSITIONS = {5, 11}
+REFRESH_CORRECT_REACTIONS = [
+    "\u0414\u0430, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e \U0001f44c",
+    "\u0412\u0435\u0440\u043d\u043e \U0001f44c",
+    "\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e \U0001f44c",
+    "\u041b\u0435\u0433\u0447\u0435 \u043b\u0435\u0433\u043a\u043e\u0433\u043e \U0001f44c",
+    "\u0418\u0437\u0438 \U0001f44c",
+]
 SUGGESTED_WORDS = [
     {
         "word": "overthinking",
@@ -1287,7 +1294,10 @@ def list_words_message(user_id):
     if not rows:
         return "\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0441\u043b\u043e\u0432. \u041f\u0440\u043e\u0441\u0442\u043e \u043e\u0442\u043f\u0440\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u043e\u0435 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e."
 
-    body = "\n".join(f"- {escape(row['word'])} - {escape(row['translation'])}" for row in rows)
+    body = "\n".join(
+        f"- {escape(str(row['word']).lower())} - {escape(row['translation'])}"
+        for row in rows
+    )
     return f"<b>\u0428\u0430\u0440\u0438\u0448\u044c \u0432 \u044d\u0442\u0438\u0445 \u0441\u043b\u043e\u0432\u0430\u0445:</b>\n{body}"
 
 
@@ -1669,17 +1679,21 @@ def add_accepted_refresh_variant(user_id, item, answer):
 def refresh_feedback(result, item):
     answer = escape(item["correct_answer"])
     if result == "correct":
-        return "Yep, this works \U0001f44c"
+        return random.choice(REFRESH_CORRECT_REACTIONS)
     if result == "almost":
         return f"\u041f\u043e\u0447\u0442\u0438 \U0001f440\n\n\u0411\u043b\u0438\u0436\u0435 \u0431\u0443\u0434\u0435\u0442:\n{answer}"
     return f"\u041d\u0435 \u0441\u043e\u0432\u0441\u0435\u043c \u044d\u0442\u043e \u0441\u043b\u043e\u0432\u043e \U0001f440\n\n\u0422\u0443\u0442 \u0441\u043a\u043e\u0440\u0435\u0435:\n{answer}"
 
 
-def refresh_ai_feedback(judge):
+def refresh_ai_feedback(judge, result):
     best_answer = escape(judge.get("best_answer") or "")
+    if result == "almost":
+        if best_answer:
+            return f"\u041f\u043e\u0439\u0434\u0435\u0442 \U0001f44c\n\n{best_answer}"
+        return "\u041f\u043e\u0439\u0434\u0435\u0442 \U0001f44c"
     if best_answer:
-        return f"\u0414\u0430, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e \U0001f44c\n\n\u0415\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u043e:\n{best_answer}"
-    return "\u0414\u0430, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e \U0001f44c"
+        return f"{random.choice(REFRESH_CORRECT_REACTIONS)}\n\n{best_answer}"
+    return random.choice(REFRESH_CORRECT_REACTIONS)
 
 
 def save_refresh_answer(session_id, position, user_answer, result):
@@ -1724,6 +1738,7 @@ def finish_refresh_session(user_id, chat_id, session_id):
             FROM refresh_session_items rsi
             JOIN suggested_words sw ON sw.id = rsi.suggested_word_id
             WHERE rsi.session_id = ? AND rsi.source = 'new'
+            ORDER BY rsi.position
             """,
             (session_id,),
         ).fetchall()
@@ -1759,25 +1774,21 @@ def finish_refresh_session(user_id, chat_id, session_id):
 
     remembered = session["remembered_count"] if session else 0
     new_words = session["new_words_count"] if session else 0
+    new_words_block = "\n".join(
+        f"- {escape(str(row['word']).lower())} - {escape(row['translation'])}"
+        for row in rows
+    )
     send_message(
         chat_id,
         f"Done \U0001f440\n\n"
-        f"\u0422\u044b \u0432\u0441\u043f\u043e\u043c\u043d\u0438\u043b: {remembered}/{REFRESH_TOTAL_ITEMS}\n"
+        f"\u0422\u044b \u0432\u0441\u043f\u043e\u043c\u043d\u0438\u043b {remembered} \u0441\u043b\u043e\u0432 \u0438\u0437 {REFRESH_TOTAL_ITEMS}\n"
         f"\u041d\u043e\u0432\u044b\u0435 \u0441\u043b\u043e\u0432\u0430: {new_words}\n\n"
+        f"{new_words_block}\n\n"
         "[result_phrase_placeholder]",
     )
 
 
 def start_refresh_mode(chat_id, user_id):
-    cooldown = refresh_cooldown_left(user_id)
-    if cooldown > timedelta(0):
-        send_message(
-            chat_id,
-            "\u041f\u0430\u043c\u044f\u0442\u044c \u0435\u0449\u0451 \u043d\u0435 \u043e\u0441\u0442\u044b\u043b\u0430 \U0001f440\n\n"
-            f"\u041c\u043e\u0436\u043d\u043e \u0441\u043d\u043e\u0432\u0430 \u0447\u0435\u0440\u0435\u0437: {format_cooldown(cooldown)}",
-        )
-        return
-
     old_words = get_refresh_old_words(user_id)
     if len(old_words) < REFRESH_OLD_WORDS_COUNT:
         send_message(
@@ -1819,7 +1830,7 @@ def handle_refresh_answer(chat_id, user_id, text):
         if ai_judge_result and (ai_judge_result["is_correct"] or ai_judge_result["is_close"]):
             result = "correct" if ai_judge_result["is_correct"] else "almost"
             variant_added = add_accepted_refresh_variant(user_id, item, text)
-            feedback = refresh_ai_feedback(ai_judge_result)
+            feedback = refresh_ai_feedback(ai_judge_result, result)
         else:
             result = "wrong"
             feedback = refresh_feedback(result, item)
