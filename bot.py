@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import re
 import shutil
 import sqlite3
@@ -66,6 +67,71 @@ CYRILLIC_MEME_REACTIONS = [
         "caption": "\u0422\u044b \u043f\u043e-\u043c\u043e\u0435\u043c\u0443 \u043f\u0435\u0440\u0435\u043f\u0443\u0442\u0430\u043b",
     }
 ]
+PRACTICE_BUTTON = "Practice"
+NEXT_PRACTICE_BUTTON = "Next practice"
+BACK_TO_MENU_BUTTON = "Back to menu"
+PRACTICE_POSITIVE_REACTIONS = [
+    "\u0412\u043e\u0442 \u044d\u0442\u043e \u0443\u0436\u0435 \u0437\u0432\u0443\u0447\u0438\u0442 \u0436\u0438\u0432\u043e \U0001f44c",
+    "Good. \u042d\u0442\u043e \u0443\u0436\u0435 \u043d\u0435 \u0448\u043a\u043e\u043b\u044c\u043d\u044b\u0439 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438\u0439.",
+    "\u041d\u043e\u0440\u043c\u0430\u043b\u044c\u043d\u043e \u0437\u0430\u0448\u043b\u043e. \u041d\u043e\u0441\u0438\u0442\u0435\u043b\u044c \u0431\u044b \u043f\u043e\u043d\u044f\u043b \u0431\u0435\u0437 \u043f\u0440\u043e\u0431\u043b\u0435\u043c.",
+    "Nice. \u0423\u0436\u0435 \u0437\u0432\u0443\u0447\u0438\u0442 \u043a\u0430\u043a \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0439 \u0434\u0438\u0430\u043b\u043e\u0433.",
+    "\u0414\u0430, \u044d\u0442\u043e \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442. \u041c\u043e\u0436\u043d\u043e \u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0443\u0442\u044c \u043e\u0442\u043f\u043e\u043b\u0438\u0440\u043e\u0432\u0430\u0442\u044c.",
+    "Solid answer. \u041c\u0430\u043b\u0435\u043d\u044c\u043a\u0438\u0439 \u0430\u043f\u0433\u0440\u0435\u0439\u0434 - \u0438 \u0432\u043e\u043e\u0431\u0449\u0435 \u043e\u0442\u043b\u0438\u0447\u043d\u043e.",
+    "\u0412\u043e\u0442 \u044d\u0442\u043e \u0443\u0436\u0435 usable English.",
+    "\u0425\u043e\u0440\u043e\u0448\u043e. \u041d\u0435 \u0438\u0434\u0435\u0430\u043b\u044c\u043d\u043e \u0443\u0447\u0435\u0431\u043d\u0438\u043a\u043e\u0432\u043e, \u0430 \u043d\u043e\u0440\u043c\u0430\u043b\u044c\u043d\u043e \u043f\u043e-\u0447\u0435\u043b\u043e\u0432\u0435\u0447\u0435\u0441\u043a\u0438.",
+    "Yep, this works. \u0414\u043e\u0431\u0430\u0432\u0438\u043c \u0447\u0443\u0442\u044c natural vibe.",
+    "\u0423\u0436\u0435 \u0431\u043b\u0438\u0437\u043a\u043e. \u041e\u0441\u0442\u0430\u043b\u043e\u0441\u044c \u0441\u0434\u0435\u043b\u0430\u0442\u044c \u0437\u0432\u0443\u0447\u0430\u043d\u0438\u0435 \u043c\u044f\u0433\u0447\u0435.",
+]
+PRACTICE_SCENARIOS = [
+    {
+        "id": "late_meeting",
+        "situation": "You are late to a meeting. Apologize in English.",
+        "keywords": ("sorry", "late", "running"),
+        "natural": "Sorry I'm late.",
+        "better": "Sorry I'm running a bit late.",
+        "why": "'running late' sounds very natural when you're apologizing in real life.",
+    },
+    {
+        "id": "oat_milk",
+        "situation": "You want to ask a barista for oat milk.",
+        "keywords": ("oat", "milk", "could", "can"),
+        "natural": "Could I get that with oat milk?",
+        "better": "Could you make it with oat milk, please?",
+        "why": "'Could I get...' is casual, polite, and very coffee-shop native.",
+    },
+    {
+        "id": "repeat",
+        "situation": "You did not understand what someone said. Ask them to repeat.",
+        "keywords": ("repeat", "again", "say", "sorry"),
+        "natural": "Sorry, could you say that again?",
+        "better": "Sorry, I missed that. Could you say it again?",
+        "why": "'I missed that' is softer than 'I didn't understand you.'",
+    },
+    {
+        "id": "decline_invite",
+        "situation": "You need to politely decline an invitation.",
+        "keywords": ("can't", "cannot", "sorry", "make", "thanks"),
+        "natural": "Thanks for inviting me, but I can't make it.",
+        "better": "I'd love to, but I can't make it this time.",
+        "why": "'I can't make it' is the smooth everyday way to decline plans.",
+    },
+    {
+        "id": "ask_help",
+        "situation": "You want to ask a colleague for help.",
+        "keywords": ("help", "could", "can", "minute", "look"),
+        "natural": "Could you help me with this for a minute?",
+        "better": "Do you have a minute to help me with this?",
+        "why": "'Do you have a minute...' respects their time and sounds relaxed.",
+    },
+    {
+        "id": "small_talk",
+        "situation": "You are making small talk with someone you just met.",
+        "keywords": ("nice", "meet", "how", "know", "event"),
+        "natural": "Nice to meet you. How do you know everyone here?",
+        "better": "Nice to meet you. How do you know the host?",
+        "why": "This gives the other person an easy way into the conversation.",
+    },
+]
 TIMEZONE_ALIASES = {
     "Europe/Moscow": "+03:00",
     "Europe/London": "+00:00",
@@ -122,6 +188,14 @@ def init_db():
         if "timezone" not in columns:
             conn.execute(
                 "ALTER TABLE users ADD COLUMN timezone TEXT NOT NULL DEFAULT 'Europe/Moscow'"
+            )
+        if "practice_mode" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN practice_mode INTEGER NOT NULL DEFAULT 0"
+            )
+        if "current_practice_scenario" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN current_practice_scenario TEXT"
             )
         conn.execute(
             """
@@ -368,7 +442,7 @@ def telegram_multipart_request(method, fields, files):
     return result["result"]
 
 
-def send_message(chat_id, text):
+def send_message(chat_id, text, reply_markup=None):
     if os.getenv("LOCAL_TEST") == "1":
         safe_text = f"\nBOT -> {chat_id}\n{text}\n"
         encoding = sys.stdout.encoding or "utf-8"
@@ -382,7 +456,7 @@ def send_message(chat_id, text):
             "text": text,
             "parse_mode": "HTML",
             "disable_web_page_preview": "true",
-            "reply_markup": json.dumps(main_keyboard(), ensure_ascii=False),
+            "reply_markup": json.dumps(reply_markup or main_keyboard(), ensure_ascii=False),
         },
     )
 
@@ -412,7 +486,15 @@ def send_cyrillic_meme_reaction(chat_id):
 
 def main_keyboard():
     return {
-        "keyboard": [[{"text": "\u0428\u0430\u0440\u044e"}]],
+        "keyboard": [[{"text": "\u0428\u0430\u0440\u044e"}, {"text": PRACTICE_BUTTON}]],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
+
+
+def practice_keyboard():
+    return {
+        "keyboard": [[{"text": NEXT_PRACTICE_BUTTON}, {"text": BACK_TO_MENU_BUTTON}]],
         "resize_keyboard": True,
         "is_persistent": True,
     }
@@ -642,6 +724,37 @@ def set_user_timezone(user_id, timezone):
         )
 
 
+def get_user_practice_state(user_id):
+    with db_connect() as conn:
+        row = conn.execute(
+            """
+            SELECT practice_mode, current_practice_scenario
+            FROM users
+            WHERE user_id = ?
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+    if not row:
+        return {"practice_mode": False, "current_practice_scenario": None}
+    return {
+        "practice_mode": bool(row["practice_mode"]),
+        "current_practice_scenario": row["current_practice_scenario"],
+    }
+
+
+def set_practice_state(user_id, practice_mode, scenario_id=None):
+    with db_connect() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET practice_mode = ?, current_practice_scenario = ?
+            WHERE user_id = ?
+            """,
+            (1 if practice_mode else 0, scenario_id, user_id),
+        )
+
+
 def save_word(user_id, card):
     normalized = normalize_word(card["word"])
     with db_connect() as conn:
@@ -709,6 +822,74 @@ def format_card(card, label=None):
         f"- {escape(card['phrase_ru'])}\n\n"
         f"<b>\u0413\u0434\u0435 \u0432\u0441\u0442\u0440\u0435\u0447\u0430\u0435\u0442\u0441\u044f:</b>\n"
         f"{usage_note}"
+    )
+
+
+def get_practice_scenario(scenario_id):
+    for scenario in PRACTICE_SCENARIOS:
+        if scenario["id"] == scenario_id:
+            return scenario
+    return None
+
+
+def pick_practice_scenario(previous_id=None):
+    choices = [scenario for scenario in PRACTICE_SCENARIOS if scenario["id"] != previous_id]
+    return random.choice(choices or PRACTICE_SCENARIOS)
+
+
+def send_practice_scenario(chat_id, user_id):
+    previous_id = get_user_practice_state(user_id).get("current_practice_scenario")
+    scenario = pick_practice_scenario(previous_id)
+    set_practice_state(user_id, True, scenario["id"])
+    send_message(
+        chat_id,
+        f"Situation: {escape(scenario['situation'])}\n\nWhat would you say in English?",
+        reply_markup=practice_keyboard(),
+    )
+
+
+def practice_feedback_message(answer, scenario):
+    normalized = normalize_word(answer)
+    answer_words = set(re.findall(r"[a-z]+", normalized))
+    keyword_hits = sum(1 for keyword in scenario["keywords"] if keyword in normalized)
+    natural_words = set(re.findall(r"[a-z]+", scenario["natural"].lower()))
+    answer_overlap = len(answer_words & natural_words)
+    is_good = keyword_hits >= 2 or answer_overlap >= 2
+    is_almost = keyword_hits == 1 or answer_overlap == 1
+
+    if is_good:
+        lead = random.choice(PRACTICE_POSITIVE_REACTIONS)
+        fix_label = "More natural:"
+    elif is_almost:
+        lead = random.choice(PRACTICE_POSITIVE_REACTIONS)
+        fix_label = "Tiny fix:"
+    else:
+        lead = "\u0412\u0438\u0436\u0443 \u0438\u0434\u0435\u044e, \u043d\u043e \u0434\u043b\u044f \u044d\u0442\u043e\u0439 \u0441\u0438\u0442\u0443\u0430\u0446\u0438\u0438 \u0437\u0432\u0443\u0447\u0430\u043b\u043e \u0431\u044b \u0435\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u0435\u0435 \u0442\u0430\u043a:"
+        fix_label = "Try this:"
+
+    return (
+        f"{lead}\n\n"
+        f"{fix_label}\n"
+        f"'{escape(scenario['natural'])}'\n\n"
+        f"Even better:\n"
+        f"'{escape(scenario['better'])}'\n\n"
+        f"Why:\n"
+        f"{escape(scenario['why'])}\n\n"
+        f"Want another one?"
+    )
+
+
+def handle_practice_answer(chat_id, user_id, text):
+    state = get_user_practice_state(user_id)
+    scenario = get_practice_scenario(state.get("current_practice_scenario"))
+    if not scenario:
+        send_practice_scenario(chat_id, user_id)
+        return
+
+    send_message(
+        chat_id,
+        practice_feedback_message(text, scenario),
+        reply_markup=practice_keyboard(),
     )
 
 
@@ -873,9 +1054,10 @@ def handle_message(message):
     remember_user(user_id, chat_id)
 
     if text.startswith("/start"):
+        set_practice_state(user_id, False)
         send_message(
             chat_id,
-            "\u041f\u0440\u0438\u0432\u0435\u0442! \u041e\u0442\u043f\u0440\u0430\u0432\u044c \u043c\u043d\u0435 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0444\u0440\u0430\u0437\u0443, \u0430 \u044f \u0441\u043e\u0445\u0440\u0430\u043d\u044e \u0435\u0435 \u0438 \u0431\u0443\u0434\u0443 \u043f\u0440\u0438\u0441\u044b\u043b\u0430\u0442\u044c \u0432 09:00, 15:00 \u0438 21:00 \u043f\u043e \u0442\u0432\u043e\u0435\u043c\u0443 \u0432\u0440\u0435\u043c\u0435\u043d\u0438.\n\n\u041d\u0430\u0436\u043c\u0438 \u00ab\u0428\u0430\u0440\u044e\u00bb, \u0447\u0442\u043e\u0431\u044b \u0443\u0432\u0438\u0434\u0435\u0442\u044c \u0441\u0432\u043e\u0438 \u0441\u043b\u043e\u0432\u0430.\n\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: /tz Europe/Moscow",
+            "\u041f\u0440\u0438\u0432\u0435\u0442! \u041e\u0442\u043f\u0440\u0430\u0432\u044c \u043c\u043d\u0435 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0444\u0440\u0430\u0437\u0443, \u0430 \u044f \u0441\u043e\u0445\u0440\u0430\u043d\u044e \u0435\u0435 \u0438 \u0431\u0443\u0434\u0443 \u043f\u0440\u0438\u0441\u044b\u043b\u0430\u0442\u044c \u0432 09:00, 15:00 \u0438 21:00 \u043f\u043e \u0442\u0432\u043e\u0435\u043c\u0443 \u0432\u0440\u0435\u043c\u0435\u043d\u0438.\n\n\u041d\u0430\u0436\u043c\u0438 \u00ab\u0428\u0430\u0440\u044e\u00bb, \u0447\u0442\u043e\u0431\u044b \u0443\u0432\u0438\u0434\u0435\u0442\u044c \u0441\u0432\u043e\u0438 \u0441\u043b\u043e\u0432\u0430, \u0438\u043b\u0438 Practice, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0442\u0440\u0435\u043d\u0438\u0442\u044c \u0436\u0438\u0432\u044b\u0435 \u0444\u0440\u0430\u0437\u044b.\n\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: /tz Europe/Moscow",
         )
         return
 
@@ -901,8 +1083,21 @@ def handle_message(message):
         send_message(chat_id, f"\u0413\u043e\u0442\u043e\u0432\u043e. \u0422\u0432\u043e\u0439 \u0447\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: {escape(timezone)}. \u0421\u0435\u0439\u0447\u0430\u0441 \u0443 \u0442\u0435\u0431\u044f {local_time}.")
         return
 
+    if text == PRACTICE_BUTTON or text == NEXT_PRACTICE_BUTTON:
+        send_practice_scenario(chat_id, user_id)
+        return
+
+    if text == BACK_TO_MENU_BUTTON:
+        set_practice_state(user_id, False)
+        send_message(chat_id, "\u0412\u0435\u0440\u043d\u0443\u043b\u0438\u0441\u044c \u0432 \u043c\u0435\u043d\u044e. \u041a\u0438\u0434\u0430\u0439 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0436\u043c\u0438 Practice.")
+        return
+
     if contains_cyrillic(text):
         send_cyrillic_meme_reaction(chat_id)
+        return
+
+    if get_user_practice_state(user_id).get("practice_mode"):
+        handle_practice_answer(chat_id, user_id, text)
         return
 
     if not is_valid_english_input(text):
