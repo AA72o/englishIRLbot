@@ -84,52 +84,121 @@ PRACTICE_POSITIVE_REACTIONS = [
 ]
 PRACTICE_SCENARIOS = [
     {
-        "id": "late_meeting",
-        "situation": "You are late to a meeting. Apologize in English.",
-        "keywords": ("sorry", "late", "running"),
+        "id": "l1_late",
+        "level": 1,
+        "situation": "You are late. Say sorry in English.",
+        "keywords": ("sorry", "late"),
         "natural": "Sorry I'm late.",
-        "better": "Sorry I'm running a bit late.",
-        "why": "'running late' sounds very natural when you're apologizing in real life.",
+        "better": "Sorry, I'm a bit late.",
+        "why": "'Sorry I'm late' is short, normal, and enough.",
+        "vocab": [
+            {"word": "late", "translation": "опоздавший / поздно", "example": "I'm late for work."},
+            {"word": "sorry", "translation": "извини / простите", "example": "Sorry, I'm late."},
+        ],
     },
     {
-        "id": "oat_milk",
-        "situation": "You want to ask a barista for oat milk.",
+        "id": "l1_coffee",
+        "level": 1,
+        "situation": "Ask for coffee.",
+        "keywords": ("coffee", "can", "please"),
+        "natural": "Can I get a coffee, please?",
+        "better": "Could I get a coffee, please?",
+        "why": "'Can I get...' is simple and works in cafes.",
+        "vocab": [
+            {"word": "coffee", "translation": "кофе", "example": "Can I get a coffee?"},
+            {"word": "please", "translation": "пожалуйста", "example": "A coffee, please."},
+        ],
+    },
+    {
+        "id": "l1_repeat",
+        "level": 1,
+        "situation": "Ask someone to repeat.",
+        "keywords": ("repeat", "again", "sorry"),
+        "natural": "Sorry, can you repeat that?",
+        "better": "Sorry, could you say that again?",
+        "why": "Simple, polite, and nobody feels awkward.",
+        "vocab": [
+            {"word": "repeat", "translation": "повторить", "example": "Can you repeat that?"},
+            {"word": "again", "translation": "ещё раз / снова", "example": "Say that again, please."},
+        ],
+    },
+    {
+        "id": "l1_tired",
+        "level": 1,
+        "situation": "Say you are tired.",
+        "keywords": ("tired", "am", "i'm"),
+        "natural": "I'm tired.",
+        "better": "I'm pretty tired today.",
+        "why": "'Pretty tired' sounds casual and human.",
+        "vocab": [
+            {"word": "tired", "translation": "уставший", "example": "I'm tired today."},
+            {"word": "pretty tired", "translation": "довольно уставший", "example": "I'm pretty tired."},
+        ],
+    },
+    {
+        "id": "l2_oat_milk",
+        "level": 2,
+        "situation": "You want oat milk in your coffee.",
         "keywords": ("oat", "milk", "could", "can"),
         "natural": "Could I get that with oat milk?",
         "better": "Could you make it with oat milk, please?",
         "why": "'Could I get...' is casual, polite, and very coffee-shop native.",
+        "vocab": [
+            {"word": "oat milk", "translation": "овсяное молоко", "example": "Could I get oat milk?"},
+            {"word": "could I get", "translation": "можно мне / я бы хотел", "example": "Could I get a latte?"},
+        ],
     },
     {
-        "id": "repeat",
-        "situation": "You did not understand what someone said. Ask them to repeat.",
-        "keywords": ("repeat", "again", "say", "sorry"),
-        "natural": "Sorry, could you say that again?",
-        "better": "Sorry, I missed that. Could you say it again?",
-        "why": "'I missed that' is softer than 'I didn't understand you.'",
+        "id": "l2_help",
+        "level": 2,
+        "situation": "Ask a colleague for help.",
+        "keywords": ("help", "could", "can", "minute"),
+        "natural": "Could you help me with this?",
+        "better": "Do you have a minute to help me with this?",
+        "why": "'Do you have a minute...' respects their time and sounds relaxed.",
+        "vocab": [
+            {"word": "help me", "translation": "помочь мне", "example": "Can you help me?"},
+            {"word": "a minute", "translation": "минутка", "example": "Do you have a minute?"},
+        ],
     },
     {
-        "id": "decline_invite",
-        "situation": "You need to politely decline an invitation.",
+        "id": "l3_decline",
+        "level": 3,
+        "situation": "Politely decline an invitation.",
         "keywords": ("can't", "cannot", "sorry", "make", "thanks"),
         "natural": "Thanks for inviting me, but I can't make it.",
         "better": "I'd love to, but I can't make it this time.",
         "why": "'I can't make it' is the smooth everyday way to decline plans.",
+        "vocab": [
+            {"word": "can't make it", "translation": "не смогу прийти / не получится", "example": "Sorry, I can't make it."},
+            {"word": "I'd love to", "translation": "я бы с радостью", "example": "I'd love to, but I'm busy."},
+        ],
     },
     {
-        "id": "ask_help",
-        "situation": "You want to ask a colleague for help.",
-        "keywords": ("help", "could", "can", "minute", "look"),
-        "natural": "Could you help me with this for a minute?",
-        "better": "Do you have a minute to help me with this?",
-        "why": "'Do you have a minute...' respects their time and sounds relaxed.",
+        "id": "l3_running_late",
+        "level": 3,
+        "situation": "You are late to a meeting and want to sound natural.",
+        "keywords": ("sorry", "running", "late"),
+        "natural": "Sorry, I'm running late.",
+        "better": "Sorry, I'm running a bit late. I'll be there soon.",
+        "why": "'running late' is the real-life phrase people use.",
+        "vocab": [
+            {"word": "running late", "translation": "опаздываю", "example": "I'm running late."},
+            {"word": "soon", "translation": "скоро", "example": "I'll be there soon."},
+        ],
     },
     {
-        "id": "small_talk",
+        "id": "l4_small_talk",
+        "level": 4,
         "situation": "You are making small talk with someone you just met.",
-        "keywords": ("nice", "meet", "how", "know", "event"),
+        "keywords": ("nice", "meet", "how", "know"),
         "natural": "Nice to meet you. How do you know everyone here?",
         "better": "Nice to meet you. How do you know the host?",
         "why": "This gives the other person an easy way into the conversation.",
+        "vocab": [
+            {"word": "small talk", "translation": "лёгкая светская беседа", "example": "I'm bad at small talk."},
+            {"word": "host", "translation": "хозяин / организатор", "example": "How do you know the host?"},
+        ],
     },
 ]
 TIMEZONE_ALIASES = {
@@ -197,6 +266,14 @@ def init_db():
             conn.execute(
                 "ALTER TABLE users ADD COLUMN current_practice_scenario TEXT"
             )
+        if "practice_level" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN practice_level INTEGER NOT NULL DEFAULT 1"
+            )
+        if "practice_correct_count" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN practice_correct_count INTEGER NOT NULL DEFAULT 0"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS words (
@@ -214,6 +291,11 @@ def init_db():
             )
             """
         )
+        word_columns = [row["name"] for row in conn.execute("PRAGMA table_info(words)").fetchall()]
+        if "learned_from_practice" not in word_columns:
+            conn.execute(
+                "ALTER TABLE words ADD COLUMN learned_from_practice INTEGER NOT NULL DEFAULT 0"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS reminder_log (
@@ -500,6 +582,17 @@ def practice_keyboard():
     }
 
 
+def practice_vocab_keyboard(scenario):
+    buttons = [
+        {
+            "text": item["word"],
+            "callback_data": f"pv:{scenario['id']}:{index}",
+        }
+        for index, item in enumerate(scenario.get("vocab", [])[:3])
+    ]
+    return {"inline_keyboard": [buttons]} if buttons else None
+
+
 def word_card_prompt(word):
     return (
         "You are a warm, modern English companion for adult Russian speakers. "
@@ -728,7 +821,7 @@ def get_user_practice_state(user_id):
     with db_connect() as conn:
         row = conn.execute(
             """
-            SELECT practice_mode, current_practice_scenario
+            SELECT practice_mode, current_practice_scenario, practice_level, practice_correct_count
             FROM users
             WHERE user_id = ?
             LIMIT 1
@@ -736,10 +829,17 @@ def get_user_practice_state(user_id):
             (user_id,),
         ).fetchone()
     if not row:
-        return {"practice_mode": False, "current_practice_scenario": None}
+        return {
+            "practice_mode": False,
+            "current_practice_scenario": None,
+            "practice_level": 1,
+            "practice_correct_count": 0,
+        }
     return {
         "practice_mode": bool(row["practice_mode"]),
         "current_practice_scenario": row["current_practice_scenario"],
+        "practice_level": row["practice_level"] or 1,
+        "practice_correct_count": row["practice_correct_count"] or 0,
     }
 
 
@@ -755,17 +855,40 @@ def set_practice_state(user_id, practice_mode, scenario_id=None):
         )
 
 
-def save_word(user_id, card):
-    normalized = normalize_word(card["word"])
+def record_practice_result(user_id, is_good):
+    state = get_user_practice_state(user_id)
+    level = min(max(int(state.get("practice_level") or 1), 1), 4)
+    correct_count = int(state.get("practice_correct_count") or 0)
+    if is_good:
+        correct_count += 1
+        if correct_count >= 3 and level < 4:
+            level += 1
+            correct_count = 0
+
     with db_connect() as conn:
         conn.execute(
             """
-            INSERT INTO words(user_id, word, normalized_word, translation, phrase_en, phrase_ru, created_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            UPDATE users
+            SET practice_level = ?, practice_correct_count = ?
+            WHERE user_id = ?
+            """,
+            (level, correct_count, user_id),
+        )
+
+
+def save_word(user_id, card):
+    normalized = normalize_word(card["word"])
+    learned_from_practice = 1 if card.get("learned_from_practice") else 0
+    with db_connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO words(user_id, word, normalized_word, translation, phrase_en, phrase_ru, created_at, learned_from_practice)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, normalized_word) DO UPDATE SET
                 translation = excluded.translation,
                 phrase_en = excluded.phrase_en,
-                phrase_ru = excluded.phrase_ru
+                phrase_ru = excluded.phrase_ru,
+                learned_from_practice = MAX(words.learned_from_practice, excluded.learned_from_practice)
             """,
             (
                 user_id,
@@ -775,6 +898,7 @@ def save_word(user_id, card):
                 card["phrase_en"],
                 card["phrase_ru"],
                 now_iso(),
+                learned_from_practice,
             ),
         )
 
@@ -832,20 +956,35 @@ def get_practice_scenario(scenario_id):
     return None
 
 
-def pick_practice_scenario(previous_id=None):
-    choices = [scenario for scenario in PRACTICE_SCENARIOS if scenario["id"] != previous_id]
+def pick_practice_scenario(level, previous_id=None):
+    choices = [
+        scenario
+        for scenario in PRACTICE_SCENARIOS
+        if scenario["level"] == level and scenario["id"] != previous_id
+    ]
+    if not choices:
+        choices = [scenario for scenario in PRACTICE_SCENARIOS if scenario["level"] == level]
     return random.choice(choices or PRACTICE_SCENARIOS)
 
 
 def send_practice_scenario(chat_id, user_id):
-    previous_id = get_user_practice_state(user_id).get("current_practice_scenario")
-    scenario = pick_practice_scenario(previous_id)
+    state = get_user_practice_state(user_id)
+    level = min(max(int(state.get("practice_level") or 1), 1), 4)
+    previous_id = state.get("current_practice_scenario")
+    scenario = pick_practice_scenario(level, previous_id)
     set_practice_state(user_id, True, scenario["id"])
+    vocab_line = " · ".join(item["word"] for item in scenario.get("vocab", [])[:3])
     send_message(
         chat_id,
-        f"Situation: {escape(scenario['situation'])}\n\nWhat would you say in English?",
-        reply_markup=practice_keyboard(),
+        f"<b>Practice · Level {level}</b>\n\n"
+        f"<b>Situation:</b>\n"
+        f"{escape(scenario['situation'])}\n\n"
+        f"<b>Useful words:</b>\n"
+        f"{escape(vocab_line)}\n\n"
+        f"Write your answer \U0001f447",
+        reply_markup=practice_vocab_keyboard(scenario),
     )
+    send_message(chat_id, "Use the word buttons if you want a quick hint.", reply_markup=practice_keyboard())
 
 
 def practice_feedback_message(answer, scenario):
@@ -867,7 +1006,7 @@ def practice_feedback_message(answer, scenario):
         lead = "\u0412\u0438\u0436\u0443 \u0438\u0434\u0435\u044e, \u043d\u043e \u0434\u043b\u044f \u044d\u0442\u043e\u0439 \u0441\u0438\u0442\u0443\u0430\u0446\u0438\u0438 \u0437\u0432\u0443\u0447\u0430\u043b\u043e \u0431\u044b \u0435\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u0435\u0435 \u0442\u0430\u043a:"
         fix_label = "Try this:"
 
-    return (
+    message = (
         f"{lead}\n\n"
         f"{fix_label}\n"
         f"'{escape(scenario['natural'])}'\n\n"
@@ -877,6 +1016,7 @@ def practice_feedback_message(answer, scenario):
         f"{escape(scenario['why'])}\n\n"
         f"Want another one?"
     )
+    return message, is_good
 
 
 def handle_practice_answer(chat_id, user_id, text):
@@ -886,9 +1026,61 @@ def handle_practice_answer(chat_id, user_id, text):
         send_practice_scenario(chat_id, user_id)
         return
 
+    feedback, is_good = practice_feedback_message(text, scenario)
+    record_practice_result(user_id, is_good)
+    send_message(chat_id, feedback, reply_markup=practice_keyboard())
+
+
+def answer_callback_query(callback_id):
+    if os.getenv("LOCAL_TEST") == "1":
+        print(f"\nBOT CALLBACK OK -> {callback_id}\n")
+        return {"ok": True}
+    return telegram_request("answerCallbackQuery", {"callback_query_id": callback_id})
+
+
+def save_practice_vocab(user_id, vocab):
+    word = vocab["word"]
+    save_word(
+        user_id,
+        {
+            "word": word,
+            "translation": vocab["translation"],
+            "phrase_en": vocab["example"],
+            "phrase_ru": "",
+            "learned_from_practice": True,
+        },
+    )
+
+
+def handle_callback_query(callback_query):
+    callback_id = callback_query.get("id")
+    data = callback_query.get("data") or ""
+    user_id = (callback_query.get("from") or {}).get("id")
+    message = callback_query.get("message") or {}
+    chat_id = (message.get("chat") or {}).get("id")
+    if callback_id:
+        answer_callback_query(callback_id)
+    if not user_id or not chat_id or not data.startswith("pv:"):
+        return
+
+    try:
+        _, scenario_id, raw_index = data.split(":", 2)
+    except ValueError:
+        return
+    scenario = get_practice_scenario(scenario_id)
+    if not scenario:
+        return
+    try:
+        vocab = scenario.get("vocab", [])[int(raw_index)]
+    except (ValueError, IndexError):
+        return
+
+    save_practice_vocab(user_id, vocab)
     send_message(
         chat_id,
-        practice_feedback_message(text, scenario),
+        f"<b>{escape(vocab['word'])}</b> = {escape(vocab['translation'])}\n\n"
+        f"Example:\n"
+        f"\"{escape(vocab['example'])}\"",
         reply_markup=practice_keyboard(),
     )
 
@@ -1137,6 +1329,8 @@ def poll_updates():
                 offset = max(offset, update["update_id"] + 1)
                 if "message" in update:
                     handle_message(update["message"])
+                if "callback_query" in update:
+                    handle_callback_query(update["callback_query"])
         except KeyboardInterrupt:
             raise
         except Exception as exc:
