@@ -67,8 +67,8 @@ CYRILLIC_MEME_REACTIONS = [
         "caption": "\u0422\u044b \u043f\u043e-\u043c\u043e\u0435\u043c\u0443 \u043f\u0435\u0440\u0435\u043f\u0443\u0442\u0430\u043b",
     }
 ]
-PRACTICE_BUTTON = "Practice"
-NEXT_PRACTICE_BUTTON = "Next practice"
+PRACTICE_BUTTON = "\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438"
+NEXT_PRACTICE_BUTTON = "Next moment"
 BACK_TO_MENU_BUTTON = "Back to menu"
 PRACTICE_POSITIVE_REACTIONS = [
     "\u0412\u043e\u0442 \u044d\u0442\u043e \u0443\u0436\u0435 \u0437\u0432\u0443\u0447\u0438\u0442 \u0436\u0438\u0432\u043e \U0001f44c",
@@ -201,6 +201,101 @@ PRACTICE_SCENARIOS = [
         ],
     },
 ]
+PRACTICE_SCENARIOS = [
+    {
+        "id": "late_apology",
+        "situation": "You are late and need to apologize.\nWhat would you say?",
+        "keywords": ("sorry", "late"),
+        "natural": "Sorry I'm late.",
+        "better": "Sorry, I'm running a bit late.",
+        "why": "'running late' is the phrase people actually use when life is not cooperating.",
+    },
+    {
+        "id": "didnt_understand",
+        "situation": "You didn't understand what someone said.\nWhat would you say?",
+        "keywords": ("sorry", "repeat", "again", "say"),
+        "natural": "Sorry, could you say that again?",
+        "better": "Sorry, I missed that. Could you say it again?",
+        "why": "'I missed that' sounds softer than making it about their speaking.",
+    },
+    {
+        "id": "friend_overthinking",
+        "situation": "Your friend is overthinking something.\nWhat would you text them?",
+        "keywords": ("okay", "worry", "overthink", "fine"),
+        "natural": "Hey, don't overthink it. You're okay.",
+        "better": "Hey, I think you're overthinking this a bit. You're okay.",
+        "why": "It sounds supportive without turning into a therapy monologue.",
+    },
+    {
+        "id": "decline_invite",
+        "situation": "You want to politely decline an invitation.\nWhat would you say?",
+        "keywords": ("thanks", "can't", "make", "sorry"),
+        "natural": "Thanks for inviting me, but I can't make it.",
+        "better": "I'd love to, but I can't make it this time.",
+        "why": "'I can't make it' is warm and normal; no dramatic explanation needed.",
+    },
+    {
+        "id": "late_reply",
+        "situation": "You accidentally ignored someone for three days.\nWhat would you text them?",
+        "keywords": ("sorry", "reply", "busy", "overwhelmed"),
+        "natural": "Sorry for the late reply.",
+        "better": "Sorry, I've been a bit overwhelmed lately.",
+        "why": "'overwhelmed' explains the vibe without oversharing your entire week.",
+    },
+    {
+        "id": "busy_coworker",
+        "situation": "Your coworker asks for help, but you are busy.\nWhat would you say?",
+        "keywords": ("busy", "later", "help", "minute"),
+        "natural": "I'm a bit busy right now, but I can help later.",
+        "better": "I'm tied up right now, but I can take a look later.",
+        "why": "'tied up' is a natural way to say you're busy without sounding cold.",
+    },
+    {
+        "id": "compliment",
+        "situation": "Someone compliments you and you need to respond naturally.\nWhat would you say?",
+        "keywords": ("thanks", "thank", "nice", "appreciate"),
+        "natural": "Thanks, that's really nice of you.",
+        "better": "Thanks, I really appreciate that.",
+        "why": "It lands better than a stiff 'thank you very much' in casual life.",
+    },
+    {
+        "id": "wrong_order",
+        "situation": "Your food order is wrong, but you want to be polite.\nWhat would you say?",
+        "keywords": ("sorry", "ordered", "wrong", "think"),
+        "natural": "Sorry, I think this isn't what I ordered.",
+        "better": "Sorry, I think there might be a mix-up with my order.",
+        "why": "'might be a mix-up' keeps it polite without acting like a courtroom.",
+    },
+    {
+        "id": "leave_conversation",
+        "situation": "You want to leave a conversation without being rude.\nWhat would you say?",
+        "keywords": ("nice", "talking", "go", "going"),
+        "natural": "It was nice talking to you. I should go.",
+        "better": "It was really nice talking to you. I should probably get going.",
+        "why": "'get going' sounds softer and more natural than just escaping the scene.",
+    },
+    {
+        "id": "how_have_you_been",
+        "situation": "Someone asks, 'How have you been?' and you don't want to say 'fine'.\nWhat would you say?",
+        "keywords": ("good", "busy", "okay", "been"),
+        "natural": "I've been good, just a bit busy.",
+        "better": "I've been pretty good, just a little all over the place lately.",
+        "why": "'all over the place' feels honest without becoming a full status report.",
+    },
+]
+PRACTICE_SCENARIO_TRANSLATIONS = {
+    "late_apology": "\u0422\u044b \u043e\u043f\u0430\u0437\u0434\u044b\u0432\u0430\u0435\u0448\u044c \u0438 \u0445\u043e\u0447\u0435\u0448\u044c \u0438\u0437\u0432\u0438\u043d\u0438\u0442\u044c\u0441\u044f.",
+    "didnt_understand": "\u0422\u044b \u043d\u0435 \u043f\u043e\u043d\u044f\u043b, \u0447\u0442\u043e \u0441\u043a\u0430\u0437\u0430\u043b \u0447\u0435\u043b\u043e\u0432\u0435\u043a.",
+    "friend_overthinking": "\u0422\u0432\u043e\u0439 \u0434\u0440\u0443\u0433 \u0441\u0435\u0431\u044f \u043d\u0430\u043a\u0440\u0443\u0447\u0438\u0432\u0430\u0435\u0442.",
+    "decline_invite": "\u0422\u044b \u0445\u043e\u0447\u0435\u0448\u044c \u0432\u0435\u0436\u043b\u0438\u0432\u043e \u043e\u0442\u043a\u0430\u0437\u0430\u0442\u044c\u0441\u044f \u043e\u0442 \u043f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u044f.",
+    "late_reply": "\u0422\u044b \u0441\u043b\u0443\u0447\u0430\u0439\u043d\u043e \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u043b \u0447\u0435\u043b\u043e\u0432\u0435\u043a\u0443 \u0442\u0440\u0438 \u0434\u043d\u044f.",
+    "busy_coworker": "\u041a\u043e\u043b\u043b\u0435\u0433\u0430 \u043f\u0440\u043e\u0441\u0438\u0442 \u043f\u043e\u043c\u043e\u0447\u044c, \u043d\u043e \u0442\u044b \u0437\u0430\u043d\u044f\u0442.",
+    "compliment": "\u0422\u0435\u0431\u0435 \u0441\u0434\u0435\u043b\u0430\u043b\u0438 \u043a\u043e\u043c\u043f\u043b\u0438\u043c\u0435\u043d\u0442, \u0438 \u0445\u043e\u0447\u0435\u0442\u0441\u044f \u043e\u0442\u0432\u0435\u0442\u0438\u0442\u044c \u0435\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u043e.",
+    "wrong_order": "\u0422\u0435\u0431\u0435 \u043f\u0440\u0438\u043d\u0435\u0441\u043b\u0438 \u043d\u0435 \u0442\u043e\u0442 \u0437\u0430\u043a\u0430\u0437, \u043d\u043e \u0442\u044b \u0445\u043e\u0447\u0435\u0448\u044c \u0441\u043a\u0430\u0437\u0430\u0442\u044c \u0432\u0435\u0436\u043b\u0438\u0432\u043e.",
+    "leave_conversation": "\u0422\u044b \u0445\u043e\u0447\u0435\u0448\u044c \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u044c \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u0438 \u043d\u0435 \u0432\u044b\u0433\u043b\u044f\u0434\u0435\u0442\u044c \u0433\u0440\u0443\u0431\u043e.",
+    "how_have_you_been": "\u0422\u0435\u0431\u044f \u0441\u043f\u0440\u043e\u0441\u0438\u043b\u0438: \u00ab\u041a\u0430\u043a \u0442\u044b?\u00bb, \u0438 \u043d\u0435 \u0445\u043e\u0447\u0435\u0442\u0441\u044f \u043e\u0442\u0432\u0435\u0447\u0430\u0442\u044c \u043f\u0440\u043e\u0441\u0442\u043e \u00abfine\u00bb.",
+}
+
 TIMEZONE_ALIASES = {
     "Europe/Moscow": "+03:00",
     "Europe/London": "+00:00",
@@ -956,35 +1051,33 @@ def get_practice_scenario(scenario_id):
     return None
 
 
-def pick_practice_scenario(level, previous_id=None):
-    choices = [
-        scenario
-        for scenario in PRACTICE_SCENARIOS
-        if scenario["level"] == level and scenario["id"] != previous_id
-    ]
-    if not choices:
-        choices = [scenario for scenario in PRACTICE_SCENARIOS if scenario["level"] == level]
+def pick_practice_scenario(previous_id=None):
+    choices = [scenario for scenario in PRACTICE_SCENARIOS if scenario["id"] != previous_id]
     return random.choice(choices or PRACTICE_SCENARIOS)
+
+
+def practice_situation_text(scenario):
+    situation = re.sub(r"\nWhat would you (?:say|text them)\?", "", scenario["situation"]).strip()
+    translation = PRACTICE_SCENARIO_TRANSLATIONS.get(scenario["id"], "")
+    return (
+        f"<b>\u0412 \u0436\u0438\u0437\u043d\u0438</b>\n\n"
+        f"{escape(situation)}\n\n"
+        f"<b>\u041f\u043e-\u0440\u0443\u0441\u0441\u043a\u0438:</b>\n"
+        f"{escape(translation)}\n\n"
+        f"\u041d\u0430\u043f\u0438\u0448\u0438 \u0432 \u0447\u0430\u0442, \u0447\u0442\u043e \u0431\u044b \u0442\u044b \u043e\u0442\u0432\u0435\u0442\u0438\u043b \u043f\u043e-\u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438 \U0001f447"
+    )
 
 
 def send_practice_scenario(chat_id, user_id):
     state = get_user_practice_state(user_id)
-    level = min(max(int(state.get("practice_level") or 1), 1), 4)
     previous_id = state.get("current_practice_scenario")
-    scenario = pick_practice_scenario(level, previous_id)
+    scenario = pick_practice_scenario(previous_id)
     set_practice_state(user_id, True, scenario["id"])
-    vocab_line = " · ".join(item["word"] for item in scenario.get("vocab", [])[:3])
     send_message(
         chat_id,
-        f"<b>Practice · Level {level}</b>\n\n"
-        f"<b>Situation:</b>\n"
-        f"{escape(scenario['situation'])}\n\n"
-        f"<b>Useful words:</b>\n"
-        f"{escape(vocab_line)}\n\n"
-        f"Write your answer \U0001f447",
-        reply_markup=practice_vocab_keyboard(scenario),
+        practice_situation_text(scenario),
+        reply_markup=practice_keyboard(),
     )
-    send_message(chat_id, "Use the word buttons if you want a quick hint.", reply_markup=practice_keyboard())
 
 
 def practice_feedback_message(answer, scenario):
@@ -1008,13 +1101,13 @@ def practice_feedback_message(answer, scenario):
 
     message = (
         f"{lead}\n\n"
-        f"{fix_label}\n"
+        f"Slightly smoother:\n"
         f"'{escape(scenario['natural'])}'\n\n"
-        f"Even better:\n"
+        f"Or:\n"
         f"'{escape(scenario['better'])}'\n\n"
         f"Why:\n"
         f"{escape(scenario['why'])}\n\n"
-        f"Want another one?"
+        f"Another moment?"
     )
     return message, is_good
 
@@ -1027,7 +1120,6 @@ def handle_practice_answer(chat_id, user_id, text):
         return
 
     feedback, is_good = practice_feedback_message(text, scenario)
-    record_practice_result(user_id, is_good)
     send_message(chat_id, feedback, reply_markup=practice_keyboard())
 
 
@@ -1249,7 +1341,19 @@ def handle_message(message):
         set_practice_state(user_id, False)
         send_message(
             chat_id,
-            "\u041f\u0440\u0438\u0432\u0435\u0442! \u041e\u0442\u043f\u0440\u0430\u0432\u044c \u043c\u043d\u0435 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0444\u0440\u0430\u0437\u0443, \u0430 \u044f \u0441\u043e\u0445\u0440\u0430\u043d\u044e \u0435\u0435 \u0438 \u0431\u0443\u0434\u0443 \u043f\u0440\u0438\u0441\u044b\u043b\u0430\u0442\u044c \u0432 09:00, 15:00 \u0438 21:00 \u043f\u043e \u0442\u0432\u043e\u0435\u043c\u0443 \u0432\u0440\u0435\u043c\u0435\u043d\u0438.\n\n\u041d\u0430\u0436\u043c\u0438 \u00ab\u0428\u0430\u0440\u044e\u00bb, \u0447\u0442\u043e\u0431\u044b \u0443\u0432\u0438\u0434\u0435\u0442\u044c \u0441\u0432\u043e\u0438 \u0441\u043b\u043e\u0432\u0430, \u0438\u043b\u0438 Practice, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0442\u0440\u0435\u043d\u0438\u0442\u044c \u0436\u0438\u0432\u044b\u0435 \u0444\u0440\u0430\u0437\u044b.\n\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441: /tz Europe/Moscow",
+            "\u041f\u0440\u0438\u0432\u0435\u0442. \u042d\u0442\u043e \u043d\u0435 \u0443\u0447\u0435\u0431\u043d\u0438\u043a \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u0433\u043e \U0001f642\n\n"
+            "\u0417\u0434\u0435\u0441\u044c \u043c\u043e\u0436\u043d\u043e:\n"
+            "- \u043a\u0438\u0434\u0430\u0442\u044c \u0441\u043b\u043e\u0432\u0430 \u0438 \u043f\u043e\u043b\u0443\u0447\u0430\u0442\u044c \u0436\u0438\u0432\u044b\u0435 \u043f\u0440\u0438\u043c\u0435\u0440\u044b\n"
+            "- \u043f\u043e\u043d\u0438\u043c\u0430\u0442\u044c, \u043a\u0430\u043a \u043b\u044e\u0434\u0438 \u0440\u0435\u0430\u043b\u044c\u043d\u043e \u0433\u043e\u0432\u043e\u0440\u044f\u0442\n"
+            "- \u043f\u043e\u043f\u0430\u0434\u0430\u0442\u044c \u0432 \u043d\u0435\u043c\u043d\u043e\u0433\u043e \u043d\u0435\u043b\u043e\u0432\u043a\u0438\u0435 \u0436\u0438\u0437\u043d\u0435\u043d\u043d\u044b\u0435 \u0441\u0438\u0442\u0443\u0430\u0446\u0438\u0438 \u0438 \u0443\u0447\u0438\u0442\u044c\u0441\u044f \u043e\u0442\u0432\u0435\u0447\u0430\u0442\u044c \u0435\u0441\u0442\u0435\u0441\u0442\u0432\u0435\u043d\u043d\u043e\n\n"
+            "\u0411\u0435\u0437 \u0443\u0440\u043e\u043a\u043e\u0432.\n"
+            "\u0411\u0435\u0437 \u00ab\u043d\u0435\u043f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e\u00bb.\n"
+            "\u0411\u0435\u0437 \u0432\u0430\u0439\u0431\u0430 \u0448\u043a\u043e\u043b\u044c\u043d\u043e\u0433\u043e \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0430.\n\n"
+            "\u041f\u0440\u043e\u0441\u0442\u043e \u0441\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0439 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u0438\u0439, \u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u0437\u0432\u0443\u0447\u0438\u0442 \u043f\u043e-\u0447\u0435\u043b\u043e\u0432\u0435\u0447\u0435\u0441\u043a\u0438.\n\n"
+            "\u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e:\n"
+            "awkward, overwhelmed, deadline\n\n"
+            "\u0438\u043b\u0438 \u043d\u0430\u0436\u043c\u0438:\n\n"
+            "\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438",
         )
         return
 
@@ -1281,7 +1385,7 @@ def handle_message(message):
 
     if text == BACK_TO_MENU_BUTTON:
         set_practice_state(user_id, False)
-        send_message(chat_id, "\u0412\u0435\u0440\u043d\u0443\u043b\u0438\u0441\u044c \u0432 \u043c\u0435\u043d\u044e. \u041a\u0438\u0434\u0430\u0439 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0436\u043c\u0438 Practice.")
+        send_message(chat_id, "\u0412\u0435\u0440\u043d\u0443\u043b\u0438\u0441\u044c \u0432 \u043c\u0435\u043d\u044e. \u041a\u0438\u0434\u0430\u0439 \u0441\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0436\u043c\u0438 \u00ab\U0001f62c \u0412 \u0436\u0438\u0437\u043d\u0438\u00bb.")
         return
 
     if contains_cyrillic(text):
@@ -1329,8 +1433,6 @@ def poll_updates():
                 offset = max(offset, update["update_id"] + 1)
                 if "message" in update:
                     handle_message(update["message"])
-                if "callback_query" in update:
-                    handle_callback_query(update["callback_query"])
         except KeyboardInterrupt:
             raise
         except Exception as exc:
